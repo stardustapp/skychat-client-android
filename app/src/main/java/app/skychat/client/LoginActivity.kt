@@ -14,8 +14,8 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.TextView
 import app.skychat.client.skylink.FolderLiteral
-import app.skychat.client.skylink.RemoteTree
 import app.skychat.client.skylink.StringLiteral
+import app.skychat.client.skylink.remoteTreeFor
 import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.content_login.*
 
@@ -188,7 +188,7 @@ class LoginActivity : AppCompatActivity() {
             val username = addressParts[0]
             val domainName = addressParts[1]
 
-            val remote = RemoteTree("https://$domainName/")
+            val remote = remoteTreeFor(domainName)
             val resp = remote.invoke("/login/invoke", FolderLiteral("input",
                     StringLiteral("username", username),
                     StringLiteral("password", username),
