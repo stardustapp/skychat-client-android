@@ -1,13 +1,12 @@
 package app.skychat.client
 
 import android.content.Intent
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-
-import kotlinx.android.synthetic.main.activity_profiles.*
+import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
-
+import com.bugsnag.android.Bugsnag
+import kotlinx.android.synthetic.main.activity_profiles.*
 
 
 class ProfilesActivity : AppCompatActivity() {
@@ -16,6 +15,8 @@ class ProfilesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profiles)
         //setSupportActionBar(toolbar)
+
+        Bugsnag.init(this)
 
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerview)
         val adapter = ProfileListAdapter(this)
