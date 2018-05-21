@@ -13,6 +13,10 @@ import kotlinx.android.synthetic.main.app_bar_chat.*
 
 class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
+    companion object {
+        val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)

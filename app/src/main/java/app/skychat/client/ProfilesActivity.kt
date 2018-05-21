@@ -8,7 +8,9 @@ import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
+import app.skychat.client.ChatActivity.Companion.EXTRA_PROFILE
 import app.skychat.client.data.Profile
+import app.skychat.client.utils.ItemEventListener
 import com.bugsnag.android.Bugsnag
 import kotlinx.android.synthetic.main.activity_profiles.*
 
@@ -24,7 +26,13 @@ class ProfilesActivity : AppCompatActivity() {
         //setSupportActionBar(toolbar)
 
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerview)
-        val adapter = ProfileListAdapter(this)
+        val adapter = ProfileListAdapter(this, object : ItemEventListener<Profile> {
+            override fun onItemClick(item: Profile) {
+                startActivity(Intent(this@ProfilesActivity, ChatActivity::class.java).apply {
+                    putExtra(EXTRA_PROFILE, item.profileId)
+                })
+            }
+        })
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this)
 
@@ -36,7 +44,7 @@ class ProfilesActivity : AppCompatActivity() {
                         .observe(this, Observer<List<Profile>>(adapter::setProfiles))
                 }
 
-        fab.setOnClickListener { view ->
+        fab.setOnClickListener { _ ->
             startActivityForResult(
                     Intent(this, LoginActivity::class.java),
                     ADD_PROFILE_ACTIVITY_REQUEST_CODE)

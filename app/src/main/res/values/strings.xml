@@ -14,6 +14,8 @@
     <string name="report_bug">Report bug</string>
     <string name="confirm_report_sent">Protocol miscommunication report has been sent, thanks!</string>
 
+    <string name="desc_saved_profile">Saved profile</string>
+
     <string name="title_activity_chat">Skychat</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>

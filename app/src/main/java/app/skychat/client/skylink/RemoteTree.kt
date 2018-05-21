@@ -10,7 +10,6 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.jackson.JacksonConverterFactory
 
 
-
 class RemoteTree constructor(private val apiUrl: String) {
 
     private val okHttpClient = OkHttpClient.Builder().build()
