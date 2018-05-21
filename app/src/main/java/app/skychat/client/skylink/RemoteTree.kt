@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.UPPER_CAMEL_CASE
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import io.reactivex.Maybe
+import io.reactivex.Observable
+import io.reactivex.schedulers.Schedulers
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
@@ -49,4 +52,29 @@ class RemoteTree constructor(private val apiUrl: String) {
         }
         throw Exception("enumerate() on '$path' returned '$outType' instead of Folder")
     }
+
+    fun getStringRx(path: String): Maybe<String> {
+        return skylink
+                .rpc(NetRequest("get", path, null, null, null))
+                .subscribeOn(Schedulers.io())
+                .filter { r -> r.ok && r.output?.type == "String" }
+                .map { r -> r.output!!.stringValue ?: "" }
+    }
+
+    fun invokeRx(path: String, input: NetEntry?): Maybe<NetEntry> {
+        return skylink
+                .rpc(NetRequest("invoke", path, null, input, null))
+                .subscribeOn(Schedulers.io())
+                .filter { r -> r.ok && r.output != null }
+                .map { x -> x.output }
+    }
+
+    fun enumerateRx(path: String, depth: Int = 1): Observable<NetEntry> {
+        return skylink
+                .rpc(NetRequest("enumerate", path, null, null, depth))
+                .subscribeOn(Schedulers.io())
+                .filter { r -> r.ok && r.output?.type == "Folder" }
+                .flatMapObservable { r -> Observable.fromIterable(r.output?.children) }
+    }
+
 }

@@ -13,7 +13,11 @@ import android.view.View
 import android.widget.Toast
 import app.skychat.client.actions.ListRoomsTask
 import app.skychat.client.data.Profile
+import app.skychat.client.skylink.FolderLiteral
+import app.skychat.client.skylink.StringLiteral
+import app.skychat.client.skylink.remoteTreeFor
 import com.bugsnag.android.Bugsnag
+import com.google.common.collect.ImmutableMap
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_chat.*
@@ -21,8 +25,7 @@ import kotlinx.android.synthetic.main.app_bar_chat.*
 import kotlinx.android.synthetic.main.content_chat.*
 import kotlinx.android.synthetic.main.nav_header_chat.*
 
-class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
-
+class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener, ActivityFragment.OnListFragmentInteractionListener {
     companion object {
         val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
     }
@@ -30,14 +33,28 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private lateinit var profileListViewModel: ProfileListViewModel
     private lateinit var profile: Profile
 
+    private var menuIds: Map<Int, ListRoomsTask.RoomEntry> = emptyMap()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
         setSupportActionBar(toolbar)
 
-        fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
+        send_message_btn.setOnClickListener { view ->
+            val message = message_input.text.toString()
+            //message_input.text = ""
+            remoteTreeFor(profile.domainName!!)
+                    .invokeRx("/sessions/${profile.sessionId}/mnt/runtime/apps/irc/namespace/state/networks/${"freenode"}/wire/send/invoke",
+                            FolderLiteral("",
+                                    StringLiteral("command", "PRIVMSG"),
+                                    FolderLiteral("params",
+                                            StringLiteral("1", currentRoom?.name!!),
+                                            StringLiteral("2", message))))
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe { x ->
+                        Snackbar.make(view, "Message sent $x", Snackbar.LENGTH_SHORT).show()
+                        message_input.text.clear()
+                    }
         }
 
         val profileId = this.intent.getStringExtra(EXTRA_PROFILE)
@@ -53,22 +70,36 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ profile ->
+                    this.profile = profile
                     object : ListRoomsTask(profile, "irc/networks", "freenode") {
                         override fun onPostExecute(result: Result?) {
                             super.onPostExecute(result)
                             nav_header_realname.text = profile.realName ?: "N/A"
                             nav_header_address.text = profile.run { "$userName@$domainName" }
-                            overall_progress.visibility = View.INVISIBLE
+                            overall_progress.visibility = View.GONE
 
                             val navMenu: NavigationView = findViewById(R.id.nav_view)
+                            val itemMap = HashMap<Int, RoomEntry>()
+                            var menuIdx = 0
                             navMenu.menu.apply {
                                 clear()
                                 val channelMenu = addSubMenu("Channels")
-                                result?.groupRooms?.forEach { channelMenu.add(it.name) }
+                                result?.groupRooms?.forEach { channelMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
+                                    isCheckable = true
+                                    setIcon(R.drawable.ic_menu_send)
+                                    itemMap[itemId] = it
+                                }}
                                 val queryMenu = addSubMenu("Queries")
-                                result?.directRooms?.forEach { queryMenu.add(it.name) }
-                                result?.backgroundRoom?.let { add("server") }
+                                result?.directRooms?.forEach { queryMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
+                                    isCheckable = true
+                                    itemMap[itemId] = it
+                                } }
+                                result?.backgroundRoom?.let { add(0, ++menuIdx, menuIdx, "server").apply {
+                                    isCheckable = true
+                                    itemMap[itemId] = it
+                                } }
                             }
+                            menuIds = ImmutableMap.copyOf(itemMap)
 
                             drawer_layout.openDrawer(GravityCompat.START)
                         }
@@ -119,15 +150,38 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
-    var currentMenuItem: MenuItem? = null
+    //var currentMenuItem: MenuItem? = null
+    var currentRoom: ListRoomsTask.RoomEntry? = null
+    var currentActivityFrag: ActivityFragment? = null
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
-        currentMenuItem?.isChecked = false
+        /*currentMenuItem?.isChecked = false
         item.isCheckable = true
         item.isChecked = true
 
-        currentMenuItem = item
+        currentMenuItem = item*/
         drawer_layout.closeDrawer(GravityCompat.START)
+
+        val fragmentManager = supportFragmentManager
+        val fragmentTransaction = fragmentManager.beginTransaction()
+
+        currentActivityFrag?.let {
+            fragmentTransaction.remove(it)
+        }
+        currentActivityFrag = null
+
+        currentRoom = menuIds[item.itemId]
+        currentRoom?.let {
+            currentActivityFrag = ActivityFragment.newInstance(profile.domainName!!, it.path)
+            fragmentTransaction.add(R.id.chat_history_frame, currentActivityFrag)
+            title = "${it.name} on Freenode"
+        }
+
+        fragmentTransaction.commit()
         return true
+    }
+
+    override fun onListFragmentInteraction(entry: ActivityEntry) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }

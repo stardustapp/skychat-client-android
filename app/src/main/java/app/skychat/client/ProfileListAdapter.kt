@@ -50,12 +50,7 @@ class ProfileListAdapter internal constructor(
         notifyDataSetChanged()
     }
 
-    // getItemCount() is called many times, and when it is first called,
-    // profileList has not been updated (means initially, it's null, and we can't return null).
     override fun getItemCount(): Int {
-        return if (profileList != null)
-            profileList!!.size
-        else
-            0
+        return profileList?.size ?: 0
     }
 }
