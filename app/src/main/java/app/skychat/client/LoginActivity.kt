@@ -53,7 +53,7 @@ class LoginActivity : AppCompatActivity() {
         // load up the actual form async
         // can take a couple hundred millis to init the autocomplete views
         val inflater = AsyncLayoutInflater(this)
-        inflater.inflate(R.layout.content_login, frame) { view, resid, parent ->
+        inflater.inflate(R.layout.content_login, frame) { view, _, parent ->
             parent.addView(view)
             login_progress.visibility = View.GONE
 

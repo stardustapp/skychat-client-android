@@ -38,4 +38,15 @@ class RemoteTree constructor(private val apiUrl: String) {
         return doOp(NetRequest(
                 "invoke", path, null, input, null)).output
     }
+
+    fun enumerate(path: String, depth: Int = 1): List<NetEntry> {
+        val output = doOp(NetRequest(
+                "enumerate", path, null, null, depth)).output
+
+        val outType = output?.type ?: "Empty"
+        if (outType == "Folder") {
+            return output!!.children!!
+        }
+        throw Exception("enumerate() on '$path' returned '$outType' instead of Folder")
+    }
 }

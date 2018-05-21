@@ -6,6 +6,7 @@ import app.skychat.client.actions.UserLoginSuccess
 import app.skychat.client.data.Profile
 import app.skychat.client.data.ProfileDao
 import app.skychat.client.data.getDatabase
+import io.reactivex.Single
 import org.threeten.bp.Instant
 
 
@@ -23,10 +24,11 @@ class ProfileRepository(application: Application) {
         return allProfiles
     }
 
-    /*
-    fun getProfileById(profileId: String): Profile? {
-        return profileDao.findByProfileId(profileId)
+    fun getProfileById(profileId: String): Single<Profile> {
+        return profileDao.findSingleByProfileId(profileId)
     }
+
+    /*
     fun insert(profile: Profile) {
         insertAsyncTask(profileDao).execute(profile)
     }
@@ -44,6 +46,7 @@ class ProfileRepository(application: Application) {
                 ?.also {
                     // already have profile, refresh with latest info
                     it.sessionId = newSession.sessionId
+                    it.realName = newSession.ownerName
                     it.userName = username
                     it.domainName = domainName
                     profileDao.update(it)
@@ -53,6 +56,7 @@ class ProfileRepository(application: Application) {
                     Profile().also {
                         it.profileId = newSession.profileId
                         it.sessionId = newSession.sessionId
+                        it.realName = newSession.ownerName
                         it.userName = username
                         it.domainName = domainName
                         it.addedAt = Instant.now()

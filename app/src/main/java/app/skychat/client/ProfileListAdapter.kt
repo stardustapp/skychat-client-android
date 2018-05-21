@@ -37,7 +37,7 @@ class ProfileListAdapter internal constructor(
     override fun onBindViewHolder(holder: ProfileViewHolder, position: Int) {
         if (profileList != null) {
             val current = profileList!![position]
-            holder.titleView.text = current.userName
+            holder.titleView.text = "${current.userName}@"
             holder.subTitleView.text = current.domainName
             holder.bind(current, itemListener)
         } else {

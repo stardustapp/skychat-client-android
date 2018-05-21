@@ -1,5 +1,6 @@
 package app.skychat.client
 
+import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.support.design.widget.NavigationView
 import android.support.design.widget.Snackbar
@@ -8,14 +9,26 @@ import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.Toast
+import app.skychat.client.actions.ListRoomsTask
+import app.skychat.client.data.Profile
+import com.bugsnag.android.Bugsnag
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_chat.*
 import kotlinx.android.synthetic.main.app_bar_chat.*
+import kotlinx.android.synthetic.main.content_chat.*
+import kotlinx.android.synthetic.main.nav_header_chat.*
 
 class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
     companion object {
         val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
     }
+
+    private lateinit var profileListViewModel: ProfileListViewModel
+    private lateinit var profile: Profile
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,6 +39,49 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show()
         }
+
+        val profileId = this.intent.getStringExtra(EXTRA_PROFILE)
+                ?: return Toast(this).let {
+                    it.setText("Profile not given with intent")
+                    it.show()
+                    finish()
+                }
+        ViewModelProviders
+                .of(this)
+                .get(ProfileListViewModel::class.java)
+                .getOneProfile(profileId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ profile ->
+                    object : ListRoomsTask(profile, "irc/networks", "freenode") {
+                        override fun onPostExecute(result: Result?) {
+                            super.onPostExecute(result)
+                            nav_header_realname.text = profile.realName ?: "N/A"
+                            nav_header_address.text = profile.run { "$userName@$domainName" }
+                            overall_progress.visibility = View.INVISIBLE
+
+                            val navMenu: NavigationView = findViewById(R.id.nav_view)
+                            navMenu.menu.apply {
+                                clear()
+                                val channelMenu = addSubMenu("Channels")
+                                result?.groupRooms?.forEach { channelMenu.add(it.name) }
+                                val queryMenu = addSubMenu("Queries")
+                                result?.directRooms?.forEach { queryMenu.add(it.name) }
+                                result?.backgroundRoom?.let { add("server") }
+                            }
+
+                            drawer_layout.openDrawer(GravityCompat.START)
+                        }
+                    }.execute(null as Void?)
+                }, { error ->
+                    Bugsnag.notify(error)
+                    Toast(this@ChatActivity).let {
+                        it.setText(error.message)
+                        it.show()
+                    }
+                    finish()
+                })
+
 
         val toggle = ActionBarDrawerToggle(
                 this, drawer_layout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close)
@@ -63,29 +119,14 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
+    var currentMenuItem: MenuItem? = null
+
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
-        // Handle navigation view item clicks here.
-        when (item.itemId) {
-            R.id.nav_camera -> {
-                // Handle the camera action
-            }
-            R.id.nav_gallery -> {
+        currentMenuItem?.isChecked = false
+        item.isCheckable = true
+        item.isChecked = true
 
-            }
-            R.id.nav_slideshow -> {
-
-            }
-            R.id.nav_manage -> {
-
-            }
-            R.id.nav_share -> {
-
-            }
-            R.id.nav_send -> {
-
-            }
-        }
-
+        currentMenuItem = item
         drawer_layout.closeDrawer(GravityCompat.START)
         return true
     }
