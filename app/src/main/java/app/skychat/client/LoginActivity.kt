@@ -3,21 +3,27 @@ package app.skychat.client
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.annotation.TargetApi
+import android.app.Activity
+import android.arch.lifecycle.ViewModelProviders
+import android.content.Context
 import android.content.Intent
-import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
+import android.support.design.widget.Snackbar
 import android.support.v4.view.AsyncLayoutInflater
 import android.support.v7.app.AppCompatActivity
 import android.text.TextUtils
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.TextView
-import app.skychat.client.skylink.FolderLiteral
-import app.skychat.client.skylink.StringLiteral
-import app.skychat.client.skylink.remoteTreeFor
+import app.skychat.client.actions.*
+import com.bugsnag.android.Bugsnag
 import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.content_login.*
+
+
+
 
 
 
@@ -30,14 +36,24 @@ class LoginActivity : AppCompatActivity() {
      */
     private var mAuthTask: UserLoginTask? = null
 
+    private lateinit var viewModel: ProfileListViewModel
+
+    companion object {
+        val EXTRA_REPLY = "app.skylink.client.LoginActivity.REPLY"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
         setupActionBar()
 
+        viewModel = ViewModelProviders.of(this)
+                .get(ProfileListViewModel::class.java)
+
+        // load up the actual form async
+        // can take a couple hundred millis to init the autocomplete views
         val inflater = AsyncLayoutInflater(this)
-        inflater.inflate(R.layout.content_login, frame)
-        { view, resid, parent ->
+        inflater.inflate(R.layout.content_login, frame) { view, resid, parent ->
             parent.addView(view)
             login_progress.visibility = View.GONE
 
@@ -51,8 +67,12 @@ class LoginActivity : AppCompatActivity() {
             })
 
             email_sign_in_button.setOnClickListener { attemptLogin() }
-        }
 
+            // focus the box and show input method
+            email.requestFocus()
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(email, InputMethodManager.SHOW_IMPLICIT)
+        }
     }
 
     /**
@@ -117,18 +137,16 @@ class LoginActivity : AppCompatActivity() {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true)
-            mAuthTask = UserLoginTask(emailStr, passwordStr)
+            mAuthTask = UserLoginActivityTask(emailStr, passwordStr, viewModel.repository)
             mAuthTask!!.execute(null as Void?)
         }
     }
 
     private fun isEmailValid(email: String): Boolean {
-        //TODO: Replace this with your own logic
-        return email.contains("@")
+        return email.split('@').size == 2
     }
 
     private fun isPasswordValid(password: String): Boolean {
-        //TODO: Replace this with your own logic
         return password.length > 4
     }
 
@@ -170,48 +188,65 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Represents an asynchronous login/registration task used to authenticate
-     * the user.
-     */
-    inner class UserLoginTask internal constructor(private val mEmail: String, private val mPassword: String)
-        : AsyncTask<Void, Void, Boolean>() {
+        /**
+         * Represents an asynchronous login/registration task used to authenticate
+         * the user.
+         */
+        inner class UserLoginActivityTask internal constructor(
+                addr: String,
+                pass: String,
+                profileRepo: ProfileRepository
+        ) : UserLoginTask(addr, pass, profileRepo) {
+            override fun onPostExecute(attempt: UserLoginAttempt) {
+                mAuthTask = null
 
-        override fun doInBackground(vararg params: Void): Boolean? {
-
-            // mEmail, mPassword
-            val addressParts = mEmail.split('@')
-            if (addressParts.size != 2) {
-                throw Error("Stardust Address is malformed. It should look like an email address.")
+                val result = attempt.result
+                when (result) {
+                    is UserLoginSuccess -> {
+                        // startActivity(Intent(this@LoginActivity, ChatActivity::class.java))
+                        setResult(Activity.RESULT_OK, Intent().apply {
+                            putExtra(EXTRA_REPLY, result.profileId)
+                        })
+                        finish() // animate out with progress animation still visible
+                    }
+                    is UserLoginFailure -> {
+                        showProgress(false)
+                        return when (result.failureStage) {
+                            FailureStage.NETWORK -> {
+                                email.error = result.errorMessage
+                                email.requestFocus()
+                                return
+                            }
+                            FailureStage.REJECTED -> {
+                                password.error = result.errorMessage
+                                password.requestFocus()
+                                return
+                            }
+                            FailureStage.CLIENT_BUG ->
+                                Snackbar.make(email,
+                                        "${getString(R.string.error_client_bug)}. ${result.errorMessage}",
+                                        Snackbar.LENGTH_INDEFINITE).show()
+                            FailureStage.SERVER_BUG ->
+                                Snackbar.make(email,
+                                        "${getString(R.string.error_server_bug)}. ${result.errorMessage}",
+                                        Snackbar.LENGTH_INDEFINITE
+                                ).setAction(getString(R.string.report_bug), { _ ->
+                                    Bugsnag.notify("Skylink confusion", result.errorMessage, emptyArray(), { report ->
+                                        report.error?.metaData?.apply {
+                                            addToTab("Request", "address", attempt.attemptedAddress)
+                                            addToTab("Request", "wall-time", attempt.wallTime)
+                                        }
+                                    })
+                                    Snackbar.make(email, getString(R.string.confirm_report_sent), Snackbar.LENGTH_SHORT).show()
+                                }).show()
+                        }
+                    }
+                }
             }
 
-            val username = addressParts[0]
-            val domainName = addressParts[1]
-
-            val remote = remoteTreeFor(domainName)
-            val resp = remote.invoke("/login/invoke", FolderLiteral("input",
-                    StringLiteral("username", username),
-                    StringLiteral("password", username),
-                    StringLiteral("client", "android:app.skychat.client:vALPHA")))
-            return resp != null
-        }
-
-        override fun onPostExecute(success: Boolean?) {
-            mAuthTask = null
-
-            if (success!!) {
-                startActivity(Intent(this@LoginActivity, ChatActivity::class.java))
-                finish()
-            } else {
+            override fun onCancelled() {
+                mAuthTask = null
                 showProgress(false)
-                password.error = getString(R.string.error_incorrect_password)
-                password.requestFocus()
             }
         }
-
-        override fun onCancelled() {
-            mAuthTask = null
-            showProgress(false)
-        }
-    }
 }

@@ -6,15 +6,18 @@
     <string name="prompt_email">Stardust Address (user@domain)</string>
     <string name="prompt_password">Password</string>
     <string name="action_sign_in">Sign in</string>
-    <string name="error_invalid_email">This email-style address is invalid</string>
+    <string name="error_invalid_email">This address doesn\'t look like an email</string>
     <string name="error_invalid_password">This password is too short</string>
-    <string name="error_incorrect_password">Your credentials were rejected</string>
     <string name="error_field_required">This field is required</string>
+    <string name="error_client_bug">Sorry, I messed up and couldn\'t process your request</string>
+    <string name="error_server_bug">Sorry, the server misbehaved</string>
+    <string name="report_bug">Report bug</string>
+    <string name="confirm_report_sent">Protocol miscommunication report has been sent, thanks!</string>
 
     <string name="title_activity_chat">Skychat</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
-    <string name="nav_header_title">Daniel Lamando</string>
+    <string name="nav_header_title">Stardust User</string>
     <string name="nav_header_subtitle">dan@bees.network</string>
     <string name="nav_header_desc">Navigation header</string>
     <string name="action_settings">Settings</string>

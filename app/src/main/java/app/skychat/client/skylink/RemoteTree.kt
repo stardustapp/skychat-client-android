@@ -31,6 +31,10 @@ class RemoteTree constructor(private val apiUrl: String) {
                 .blockingGet()
     }
 
+    fun ping(): Boolean {
+        return doOp(NetRequest("ping", null, null, null, null)).ok
+    }
+
     fun invoke(path: String, input: NetEntry?): NetEntry? {
         return doOp(NetRequest(
                 "invoke", path, null, input, null)).output

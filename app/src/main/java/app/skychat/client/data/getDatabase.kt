@@ -7,12 +7,10 @@ private var INSTANCE: AppDatabase? = null
 fun getDatabase(context: Context): AppDatabase {
     if (INSTANCE == null) {
         synchronized(AppDatabase::class.java) {
-            if (INSTANCE == null) {
-                INSTANCE = Room.databaseBuilder(context.applicationContext,
-                        AppDatabase::class.java, "word_database")
-                        .build()
-
-            }
+            INSTANCE = INSTANCE ?: Room
+                    .databaseBuilder(context.applicationContext,
+                            AppDatabase::class.java, "sessions")
+                    .build()
         }
     }
     return INSTANCE!!

@@ -1,27 +1,28 @@
 package app.skychat.client.data
 
 import android.arch.lifecycle.LiveData
-import android.arch.persistence.room.Dao
-import android.arch.persistence.room.Delete
-import android.arch.persistence.room.Insert
-import android.arch.persistence.room.Query
+import android.arch.persistence.room.*
 
 
 @Dao
 interface ProfileDao {
-    @Query("SELECT * FROM profiles")
+    @Query("SELECT * FROM Profile")
     fun getAll(): LiveData<List<Profile>>
 
-    @Query("SELECT * FROM profiles WHERE profileId IN (:profileIds)")
+    @Query("SELECT * FROM Profile WHERE profile_id IN (:profileIds)")
     fun loadAllByIds(profileIds: Array<String>): List<Profile>
 
-    //@Query("SELECT * FROM profiles WHERE first_name LIKE :first AND " + "last_name LIKE :last LIMIT 1")
-    //fun findByName(first: String, last: String): User
+    @Query("SELECT * FROM Profile WHERE profile_id = :profileId LIMIT 1")
+    fun findByProfileId(profileId: String): Profile?
 
     @Insert
     fun insert(profile: Profile)
+
     //@Insert
     //fun insertAll(vararg profiles: Profile)
+
+    @Update
+    fun update(profile: Profile)
 
     @Delete
     fun delete(profile: Profile)
