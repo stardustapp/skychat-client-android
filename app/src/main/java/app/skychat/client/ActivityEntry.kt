@@ -1,6 +1,7 @@
 package app.skychat.client
 
 import com.google.common.base.Joiner
+import com.google.common.collect.ImmutableList
 import org.threeten.bp.Instant
 import org.threeten.bp.ZoneId
 import org.threeten.bp.format.DateTimeFormatter
@@ -25,12 +26,21 @@ class ActivityEntry(
                 k1 - k2
             })
             .map { pair -> pair.value }
+            .let {
+                // CTCP: convert "ACTION slaps ChanServ" to "ACTION","slaps ChanServ"
+                if (command == "CTCP" && it.size == 2 && it[1].contains(' ')) {
+                    ImmutableList.of(it[0],
+                            it[1].substringBefore(' '),
+                            it[1].substringAfter(' '))
+                } else it
+            }
 
+    val isAction = command == "CTCP" && params[1] == "ACTION"
     val isMessage = when (command) {
         "PRIVMSG", "NOTICE" -> true
         else -> false
     }
-    var isContinuedMessage = false
+    var isContinuedMessage = false // updated by renderer
 
     fun displayText(): String {
         //val params = props.getOrDefault("command", emptyArray<String>())
@@ -78,28 +88,30 @@ class ActivityEntry(
                         .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                 "Set $topicTimestamp by ${params[2]}"
             }
-            //"353': // names list
+        //"353': // names list
             "366" -> // end of names
                 "Completed parsing /names response"
 
-            // Error numerics
+        // Error numerics
             "421" -> // unknown command
                 "${params[2]} ${params[1]}"
             "462" -> // you may not reregister
                 params[1]
 
-            // Messages
+        // Messages
             "PRIVMSG", "NOTICE" ->
                 params[1]
-            "CTCP" ->
-                when (params[1]) {
-                    "ACTION" ->
-                        "* $prefixName ${params[2]}"
-                    else -> {
-                        val args = Joiner.on(' ').join(params.drop(1))
-                        "- $prefixName requested CTCP $args"
+            "CTCP" -> {
+                params.let { params ->
+                    when (params[1]) {
+                        "ACTION" -> params[2] // handled by the layout
+                        else -> {
+                            val args = Joiner.on(' ').join(params.drop(1))
+                            "- $prefixName requested CTCP $args"
+                        }
                     }
                 }
+            }
             "CTCP_ANSWER" ->
                 when (params[1]) {
                     "ACTION" ->

@@ -2,11 +2,13 @@ package app.skychat.client
 
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import app.skychat.client.ActivityFragment.OnListFragmentInteractionListener
 import app.skychat.client.dummy.DummyContent.DummyItem
@@ -79,6 +81,24 @@ class ActivityRecyclerViewAdapter(
                     .apply { height = 0 }
         }
 
+        if (item.isAction) {
+            val authorColor = colorGenerator.getColor(item.prefixName)
+            val authorIcon = smallIconBuilder.build(item.prefixName.substring(0..0), authorColor)
+
+            holder.bodyAvatar.setImageDrawable(authorIcon)
+            holder.bodyAvatar.visibility = View.VISIBLE
+
+            holder.bodyAuthorName.setTextColor(authorColor)
+            holder.bodyAuthorName.text = item.prefixName
+            holder.bodyAuthorName.visibility = View.VISIBLE
+
+            holder.bodyText.setTypeface(null, Typeface.ITALIC)
+        } else {
+            holder.bodyAvatar.visibility = View.GONE
+            holder.bodyAuthorName.visibility = View.GONE
+            holder.bodyText.setTypeface(null, Typeface.NORMAL)
+        }
+
         holder.bodyText.text = item.displayText()
         holder.timestamp.text = item.timestamp?.let {
             timeFormatter.format(it)
@@ -100,20 +120,33 @@ class ActivityRecyclerViewAdapter(
     inner class ViewHolder(val mView: View) : RecyclerView.ViewHolder(mView) {
         val authorName: TextView = mView.msg_author_name
         val authorAvatar: ImageView = mView.msg_author_avatar
+        val bodyAuthorName: TextView = mView.msg_body_author_name
+        val bodyAvatar: ImageView = mView.msg_body_avatar
         val bodyText: TextView = mView.msg_body_text
         val timestamp: TextView = mView.msg_timestamp
-        val msgLayout = mView.msg_layout
+        val msgLayout: LinearLayout = mView.msg_layout
     }
 
     companion object {
-        val colorGenerator = ColorGenerator.MATERIAL
+        val colorGenerator = ColorGenerator.MATERIAL!!
         // int color = generator.getColor("user@gmail.com")
         val iconBuilder = TextDrawable.builder()
                 .beginConfig()
                 .toUpperCase()
                 .bold()
                 .textColor(Color.BLACK)
+                .width(32)
+                .height(32)
                 .endConfig()
-                .round()
+                .round()!!
+        val smallIconBuilder = TextDrawable.builder()
+                .beginConfig()
+                .toUpperCase()
+                .bold()
+                .textColor(Color.BLACK)
+                .width(16)
+                .height(16)
+                .endConfig()
+                .round()!!
     }
 }
