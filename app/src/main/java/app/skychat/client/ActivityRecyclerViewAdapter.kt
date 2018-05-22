@@ -1,17 +1,23 @@
 package app.skychat.client
 
 
+import android.graphics.Color
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import app.skychat.client.ActivityFragment.OnListFragmentInteractionListener
 import app.skychat.client.dummy.DummyContent.DummyItem
+import com.amulyakhare.textdrawable.TextDrawable
+import com.amulyakhare.textdrawable.util.ColorGenerator
 import kotlinx.android.synthetic.main.fragment_activity.view.*
 import org.threeten.bp.ZoneId
 import org.threeten.bp.format.DateTimeFormatter
 import org.threeten.bp.format.FormatStyle
+
+
 
 
 /**
@@ -47,8 +53,34 @@ class ActivityRecyclerViewAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = mValues[position]
-        holder.mIdView.text = item.displayText()
-        holder.mContentView.text = item.timestamp?.let {
+
+        val currentLayoutParams = (holder.msgLayout.layoutParams as ViewGroup.MarginLayoutParams)
+        holder.msgLayout.layoutParams = currentLayoutParams.apply {
+            topMargin = if (item.isContinuedMessage) 0 else leftMargin / 2
+        }
+
+        if (item.isMessage && !item.isContinuedMessage) {
+            val authorColor = colorGenerator.getColor(item.prefixName)
+            val authorIcon = iconBuilder.build(item.prefixName.substring(0..0), authorColor)
+
+            holder.authorName.text = item.prefixName
+            holder.authorName.setTextColor(authorColor)
+            holder.authorName.visibility = View.VISIBLE
+
+            holder.authorAvatar.setImageDrawable(authorIcon)
+            holder.authorAvatar.visibility = View.VISIBLE
+            holder.authorAvatar.layoutParams
+                    .apply { height = width }
+        } else {
+            holder.authorName.visibility = View.GONE
+
+            holder.authorAvatar.visibility = View.INVISIBLE
+            holder.authorAvatar.layoutParams
+                    .apply { height = 0 }
+        }
+
+        holder.bodyText.text = item.displayText()
+        holder.timestamp.text = item.timestamp?.let {
             timeFormatter.format(it)
         }
 
@@ -66,11 +98,22 @@ class ActivityRecyclerViewAdapter(
     override fun getItemCount(): Int = mValues.size
 
     inner class ViewHolder(val mView: View) : RecyclerView.ViewHolder(mView) {
-        val mIdView: TextView = mView.item_number
-        val mContentView: TextView = mView.content
+        val authorName: TextView = mView.msg_author_name
+        val authorAvatar: ImageView = mView.msg_author_avatar
+        val bodyText: TextView = mView.msg_body_text
+        val timestamp: TextView = mView.msg_timestamp
+        val msgLayout = mView.msg_layout
+    }
 
-        override fun toString(): String {
-            return super.toString() + " '" + mContentView.text + "'"
-        }
+    companion object {
+        val colorGenerator = ColorGenerator.MATERIAL
+        // int color = generator.getColor("user@gmail.com")
+        val iconBuilder = TextDrawable.builder()
+                .beginConfig()
+                .toUpperCase()
+                .bold()
+                .textColor(Color.BLACK)
+                .endConfig()
+                .round()
     }
 }

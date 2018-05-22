@@ -26,6 +26,23 @@ class ActivityHistoryViewModel constructor(
 
     fun watchForSnapshots(): Observable<List<ActivityEntry>> {
         return allHistorySubject
+                .map { list ->
+                    var currentAuthor: String? = null
+                    list.forEach { entry ->
+                        if (entry.isMessage) {
+                            if (currentAuthor == entry.prefixName) {
+                                entry.isContinuedMessage = true
+                            } else {
+                                currentAuthor = entry.prefixName
+                                entry.isContinuedMessage = false
+                            }
+                        } else {
+                            currentAuthor = null
+                            entry.isContinuedMessage = false
+                        }
+                    }
+                    list
+                }
     }
 
     fun startIfIdle(domainName: String, logPath: String) {

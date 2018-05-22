@@ -26,6 +26,12 @@ class ActivityEntry(
             })
             .map { pair -> pair.value }
 
+    val isMessage = when (command) {
+        "PRIVMSG", "NOTICE" -> true
+        else -> false
+    }
+    var isContinuedMessage = false
+
     fun displayText(): String {
         //val params = props.getOrDefault("command", emptyArray<String>())
 
@@ -83,8 +89,8 @@ class ActivityEntry(
                 params[1]
 
             // Messages
-            "PRIVMSG" ->
-                "<$prefixName> ${params[1]}"
+            "PRIVMSG", "NOTICE" ->
+                params[1]
             "CTCP" ->
                 when (params[1]) {
                     "ACTION" ->

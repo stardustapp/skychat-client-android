@@ -64,4 +64,9 @@ dependencies {
     implementation 'com.bugsnag:bugsnag-android:4.4.0'
 
     implementation 'com.jakewharton.threetenabp:threetenabp:1.1.0'
+
+    // from personal jfrog - https://github.com/amulyakhare/TextDrawable
+    implementation 'com.amulyakhare:com.amulyakhare.textdrawable:1.0.1'
+    // from jitpack - https://github.com/deano2390/FlowTextView
+    //implementation 'com.github.deano2390:FlowTextView:2.0.5'
 }
