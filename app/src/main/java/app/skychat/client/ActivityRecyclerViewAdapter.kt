@@ -70,8 +70,8 @@ class ActivityRecyclerViewAdapter(
             val authorIcon = iconBuilder.build(item.prefixName.substring(0..0), authorColor)
 
             holder.authorName.text = item.prefixName
-            holder.authorName.setTextColor(authorColor)
             holder.authorName.visibility = View.VISIBLE
+            holder.authorName.setTextColor(authorColor)
 
             holder.authorAvatar.setImageDrawable(authorIcon)
             holder.authorAvatar.visibility = View.VISIBLE
@@ -87,27 +87,25 @@ class ActivityRecyclerViewAdapter(
 
         if (item.isAction) {
             val authorColor = colorGenerator.getColor(item.prefixName)
-            val authorIcon = smallIconBuilder.build(item.prefixName.substring(0..0), authorColor)
+            val authorIcon = smallIconBuilder.build(
+                    item.prefixName.substring(0..0),
+                    authorColor)
 
-            holder.bodyAvatar.setImageDrawable(authorIcon)
             holder.bodyAvatar.visibility = View.VISIBLE
+            holder.bodyAvatar.setImageDrawable(authorIcon)
 
-            holder.bodyAuthorName.setTextColor(authorColor)
             holder.bodyAuthorName.text = item.prefixName
             holder.bodyAuthorName.visibility = View.VISIBLE
+            holder.bodyAuthorName.setTextColor(authorColor)
+            holder.bodyAuthorName.setTypeface(null,Typeface.BOLD or Typeface.ITALIC)
 
-            holder.bodyText.typeface.let { tf ->
-                holder.bodyText.setTypeface(tf, Typeface.BOLD)
-                holder.bodyText.setTypeface(tf, Typeface.ITALIC)
-            }
+            holder.bodyText.setTypeface(null, Typeface.ITALIC)
         } else {
             holder.bodyAvatar.visibility = View.GONE
 
             holder.bodyAuthorName.visibility = View.GONE
 
-            holder.bodyText.typeface.let { tf ->
-                holder.bodyText.setTypeface(tf, Typeface.NORMAL)
-            }
+            holder.bodyText.setTypeface(null, Typeface.NORMAL)
         }
 
         if (item.isBackground) {
