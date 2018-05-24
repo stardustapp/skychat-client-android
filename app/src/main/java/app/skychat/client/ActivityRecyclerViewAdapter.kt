@@ -50,7 +50,6 @@ class ActivityRecyclerViewAdapter(
     }
 
     val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-            //.withLocale(Locale.UK)
             .withZone(ZoneId.systemDefault())
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -131,6 +130,13 @@ class ActivityRecyclerViewAdapter(
     }
 
     override fun getItemCount(): Int = mValues.size
+
+    override fun getItemId(position: Int): Long {
+        return mValues[position].path.hashCode().toLong()
+    }
+    init {
+        setHasStableIds(true)
+    }
 
     inner class ViewHolder(val mView: View) : RecyclerView.ViewHolder(mView) {
         val authorName: TextView = mView.msg_author_name

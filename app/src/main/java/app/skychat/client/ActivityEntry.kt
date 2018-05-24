@@ -8,7 +8,7 @@ import org.threeten.bp.format.DateTimeFormatter
 
 class ActivityEntry(
         val idx: Int,
-        val path: String?,
+        val path: String,
         props: Map<String, String>
 ) {
     val command = props.getOrDefault("command", "")
