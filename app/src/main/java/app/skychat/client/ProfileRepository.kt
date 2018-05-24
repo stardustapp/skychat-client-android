@@ -6,7 +6,7 @@ import app.skychat.client.actions.UserLoginSuccess
 import app.skychat.client.data.Profile
 import app.skychat.client.data.ProfileDao
 import app.skychat.client.data.getDatabase
-import io.reactivex.Single
+import io.reactivex.Maybe
 import org.threeten.bp.Instant
 
 
@@ -24,7 +24,7 @@ class ProfileRepository(application: Application) {
         return allProfiles
     }
 
-    fun getProfileById(profileId: String): Single<Profile> {
+    fun getProfileById(profileId: String): Maybe<Profile> {
         return profileDao.findSingleByProfileId(profileId)
     }
 

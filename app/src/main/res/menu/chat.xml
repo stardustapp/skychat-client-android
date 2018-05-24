@@ -2,13 +2,23 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/action_settings"
+        android:id="@+id/action_irc_settings"
         android:orderInCategory="100"
-        android:title="@string/action_settings"
+        android:title="@string/action_irc_settings"
         app:showAsAction="never" />
     <item
-        android:id="@+id/action_logout"
+        android:id="@+id/action_app_settings"
+        android:orderInCategory="120"
+        android:title="@string/action_app_settings"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_add_profile"
+        android:orderInCategory="130"
+        android:title="@string/action_add_account"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_manage_profiles"
         android:orderInCategory="150"
-        android:title="@string/action_logout"
+        android:title="@string/action_manage_accounts"
         app:showAsAction="never" />
 </menu>

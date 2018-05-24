@@ -4,7 +4,8 @@ import android.app.Application
 import android.arch.lifecycle.AndroidViewModel
 import android.arch.lifecycle.LiveData
 import app.skychat.client.data.Profile
-import io.reactivex.Single
+import io.reactivex.Maybe
+import io.reactivex.schedulers.Schedulers
 
 class ProfileListViewModel constructor(app: Application) : AndroidViewModel(app) {
     public val repository: ProfileRepository = ProfileRepository(app)
@@ -14,8 +15,10 @@ class ProfileListViewModel constructor(app: Application) : AndroidViewModel(app)
         return allProfiles
     }
 
-    fun getOneProfile(profileId: String): Single<Profile> {
+    fun getOneProfile(profileId: String): Maybe<Profile> {
         return repository.getProfileById(profileId)
+                .subscribeOn(Schedulers.io())
+
     }
 
     /*

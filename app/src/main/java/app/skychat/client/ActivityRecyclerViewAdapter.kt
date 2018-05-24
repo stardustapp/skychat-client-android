@@ -49,9 +49,6 @@ class ActivityRecyclerViewAdapter(
         return ViewHolder(view)
     }
 
-    val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-            .withZone(ZoneId.systemDefault())
-
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = mValues[position]
 
@@ -115,7 +112,7 @@ class ActivityRecyclerViewAdapter(
         holder.bodyText.text = item.displayText()
 
         holder.timestamp.text = item.timestamp?.let {
-            timeFormatter.format(it)
+            Companion.timeFormatter.format(it)
         }
 
         with(holder.mView) {
@@ -169,5 +166,9 @@ class ActivityRecyclerViewAdapter(
                 .height(16)
                 .endConfig()
                 .round()!!
+
+        val timeFormatter = DateTimeFormatter
+                .ofLocalizedTime(FormatStyle.SHORT)
+                .withZone(ZoneId.systemDefault())!!
     }
 }

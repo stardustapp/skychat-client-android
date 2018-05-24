@@ -1,6 +1,9 @@
 package app.skychat.client
 
 import android.arch.lifecycle.ViewModelProviders
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.support.design.widget.NavigationView
 import android.support.design.widget.Snackbar
@@ -21,7 +24,6 @@ import com.bugsnag.android.Bugsnag
 import com.google.common.collect.ImmutableMap
 import io.reactivex.Maybe
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_chat.*
 import kotlinx.android.synthetic.main.app_bar_chat.*
 import kotlinx.android.synthetic.main.content_chat.*
@@ -33,8 +35,9 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
     }
 
-    private lateinit var profileListViewModel: ProfileListViewModel
     private lateinit var profile: Profile
+    private lateinit var viewModelProvider: ProfileListViewModel
+    private lateinit var sharedPrefs: SharedPreferences
 
     private var menuIds: Map<Int, ListRoomsTask.RoomEntry> = emptyMap()
 
@@ -102,17 +105,41 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 })
         }
 
-        val profileId = this.intent.getStringExtra(EXTRA_PROFILE)
-                ?: return Toast(this).let {
-                    it.setText("Profile not given with intent")
-                    it.show()
-                    finish()
-                }
-        ViewModelProviders
-                .of(this)
+        viewModelProvider = ViewModelProviders.of(this)
                 .get(ProfileListViewModel::class.java)
+
+        sharedPrefs = getSharedPreferences(
+                getString(R.string.preference_state_file_key), Context.MODE_PRIVATE)
+
+        // guess the profile
+        val profileId = if (this.intent.hasExtra(EXTRA_PROFILE)) {
+            this.intent.getStringExtra(EXTRA_PROFILE)
+                    ?: throw Error("EXTRA_PROFILE seen, but didn't get")
+        } else {
+            sharedPrefs.getString(getString(R.string.preference_current_profile),
+                    "none")
+        }
+
+        viewModelProvider
                 .getOneProfile(profileId)
-                .subscribeOn(Schedulers.io())
+                .switchIfEmpty(Maybe.fromCallable({
+                    viewModelProvider
+                            .getAllProfiles()
+                            .value.orEmpty()
+                            .firstOrNull()
+                            .also { if (it == null) {
+                                // let the user add an initial profile
+                                startActivity(Intent(this,
+                                        ProfilesActivity::class.java))
+                                finish()
+                            }}
+                }))
+                .filter {
+                    with (sharedPrefs.edit()) {
+                        putString(getString(R.string.preference_current_profile), it.profileId)
+                        commit()
+                    };true
+                }
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ profile ->
                     this.profile = profile
@@ -186,9 +213,12 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         when (item.itemId) {
-            R.id.action_settings -> return true
-            R.id.action_logout -> {
-                finish()
+            R.id.action_add_profile -> {
+                startActivity(Intent(this, LoginActivity::class.java))
+                return true
+            }
+            R.id.action_manage_profiles -> {
+                startActivity(Intent(this, ProfilesActivity::class.java))
                 return true
             }
             else -> return super.onOptionsItemSelected(item)
@@ -227,6 +257,6 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     override fun onListFragmentInteraction(entry: ActivityEntry) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        //TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }

@@ -2,7 +2,7 @@ package app.skychat.client.data
 
 import android.arch.lifecycle.LiveData
 import android.arch.persistence.room.*
-import io.reactivex.Single
+import io.reactivex.Maybe
 
 
 @Dao
@@ -17,7 +17,7 @@ interface ProfileDao {
     fun findByProfileId(profileId: String): Profile?
 
     @Query("SELECT * FROM Profile WHERE profile_id = :profileId LIMIT 1")
-    fun findSingleByProfileId(profileId: String): Single<Profile>
+    fun findSingleByProfileId(profileId: String): Maybe<Profile>
 
     @Insert
     fun insert(profile: Profile)
