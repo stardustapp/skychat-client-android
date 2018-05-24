@@ -9,7 +9,7 @@ import org.threeten.bp.format.DateTimeFormatter
 class ActivityEntry(
         val idx: Int,
         val path: String?,
-        val props: Map<String, String>
+        props: Map<String, String>
 ) {
     val command = props.getOrDefault("command", "")
     val prefixName = props.getOrDefault("prefix-name", "")
@@ -41,6 +41,11 @@ class ActivityEntry(
         else -> false
     }
     var isContinuedMessage = false // updated by renderer
+    val isBackground = when (command) {
+        "JOIN", "PART", "QUIT", "NICK" -> true
+        "MODE" -> !(params[1]?.contains(importantModes) ?: true)
+        else -> false
+    }
 
     fun displayText(): String {
         //val params = props.getOrDefault("command", emptyArray<String>())
@@ -124,5 +129,9 @@ class ActivityEntry(
             else ->
                 "- $prefixName $command ${Joiner.on(' ').join(params)}"
         }
+    }
+
+    companion object {
+        private val importantModes = Regex("[A-Zb-gi-npr-uw-z]") // ahoqv are okay (vhoaq)
     }
 }

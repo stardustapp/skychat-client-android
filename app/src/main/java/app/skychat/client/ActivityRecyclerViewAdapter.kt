@@ -110,6 +110,11 @@ class ActivityRecyclerViewAdapter(
             }
         }
 
+        if (item.isBackground) {
+            holder.bodyText.setTextColor(Color.GRAY)
+        } else {
+            holder.bodyText.setTextColor(Color.WHITE)
+        }
         holder.bodyText.text = item.displayText()
 
         holder.timestamp.text = item.timestamp?.let {
