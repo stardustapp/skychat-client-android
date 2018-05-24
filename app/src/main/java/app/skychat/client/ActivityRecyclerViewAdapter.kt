@@ -58,7 +58,11 @@ class ActivityRecyclerViewAdapter(
 
         val currentLayoutParams = (holder.msgLayout.layoutParams as ViewGroup.MarginLayoutParams)
         holder.msgLayout.layoutParams = currentLayoutParams.apply {
-            topMargin = if (item.isContinuedMessage) 0 else leftMargin / 2
+            topMargin = when {
+                item.isContinuedMessage -> 0
+                item.isMessage -> leftMargin / 2
+                else -> leftMargin / 4
+            }
         }
 
         if (item.isMessage && !item.isContinuedMessage) {
@@ -92,14 +96,22 @@ class ActivityRecyclerViewAdapter(
             holder.bodyAuthorName.text = item.prefixName
             holder.bodyAuthorName.visibility = View.VISIBLE
 
-            holder.bodyText.setTypeface(null, Typeface.ITALIC)
+            holder.bodyText.typeface.let { tf ->
+                holder.bodyText.setTypeface(tf, Typeface.BOLD)
+                holder.bodyText.setTypeface(tf, Typeface.ITALIC)
+            }
         } else {
             holder.bodyAvatar.visibility = View.GONE
+
             holder.bodyAuthorName.visibility = View.GONE
-            holder.bodyText.setTypeface(null, Typeface.NORMAL)
+
+            holder.bodyText.typeface.let { tf ->
+                holder.bodyText.setTypeface(tf, Typeface.NORMAL)
+            }
         }
 
         holder.bodyText.text = item.displayText()
+
         holder.timestamp.text = item.timestamp?.let {
             timeFormatter.format(it)
         }
