@@ -25,7 +25,7 @@ class ActivityEntry(
                 val k2 = o2.split('/')[1].toInt()
                 k1 - k2
             })
-            .map { pair -> pair.value }
+            .map { pair -> pair.value!! }
             .let {
                 // CTCP: convert "ACTION slaps ChanServ" to "ACTION","slaps ChanServ"
                 if (command == "CTCP" && it.size == 2 && it[1].contains(' ')) {
@@ -33,7 +33,7 @@ class ActivityEntry(
                             it[1].substringBefore(' '),
                             it[1].substringAfter(' '))
                 } else it
-            }
+            }!!
 
     val isAction = command == "CTCP" && params[1] == "ACTION"
     val isMessage = when (command) {
@@ -43,8 +43,12 @@ class ActivityEntry(
     var isContinuedMessage = false // updated by renderer
     val isBackground = when (command) {
         "JOIN", "PART", "QUIT", "NICK" -> true
-        "MODE" -> !(params[1]?.contains(importantModes) ?: true)
+        "MODE" -> !(params.getOrNull(1)?.contains(importantModes) ?: true)
         else -> false
+    }
+
+    private fun getParam(idx: Int): String? {
+        return params.getOrNull(idx)
     }
 
     fun displayText(): String {
@@ -55,17 +59,17 @@ class ActivityEntry(
                 "$prefixName joined ($extraPath)"
             "INVITE" ->
                 // TODO: if (params[0] === current-nick)
-                "$prefixName invited ${params[0]} to join ${params[1]}"
+                "$prefixName invited ${getParam(0)} to join ${getParam(1)}"
             "PART" ->
-                "$prefixName left ($extraPath) ${params[1] ?: ""}"
+                "$prefixName left ($extraPath) ${getParam(1) ?: ""}"
             "KICK" ->
-                "$prefixName kicked ${params[1]} from ${params[0]} (${params[1] ?: ""})"
+                "$prefixName kicked ${getParam(1)} from ${getParam(0)} (${getParam(1) ?: ""})"
             "QUIT" ->
-                "$prefixName quit ($extraPath) ${params[0] ?: ""}"
+                "$prefixName quit ($extraPath) ${getParam(0) ?: ""}"
             "NICK" ->
-                "$prefixName => ${params[0]}"
+                "$prefixName => ${getParam(0)}"
             "TOPIC" ->
-                "$prefixName set the topic: ${params[1]}"
+                "$prefixName set the topic: ${getParam(1)}"
             "MODE" -> {
                 val args = Joiner.on(' ').join(params.drop(1))
                 "$prefixName set modes: $args"
@@ -73,25 +77,25 @@ class ActivityEntry(
 
         // Information numerics
             "001", "002", "003" ->
-                params[1]
+                "${getParam(1)}"
             "004" ->
-                "Your server is ${params[1]}, running ${params[2]}"
+                "Your server is ${getParam(1)}, running ${getParam(2)}"
             "042" ->
-                "${params[2]} is ${params[1]}"
+                "${getParam(2)} is ${getParam(1)}"
             "251", "255", "250" ->
-                params[1]
+                "${getParam(1)}"
             "265", "266" -> // current local/global users
-                params[params.size - 1]
+                params.last()
             "252", "254", "396" ->
-                "${params[1]} ${params[2]}"
+                "${getParam(1)} ${getParam(2)}"
             "332" -> // topic - TODO: should be rich/formatting
-                "Topic of ${params[1]} is ${params[2]}"
+                "Topic of ${getParam(1)} is ${getParam(2)}"
             "333" -> {// topic author, timestamp
                 val topicTimestamp = Instant
-                        .ofEpochSecond(params[3].toLong())
+                        .ofEpochSecond(getParam(3)?.toLong() ?: 0)
                         .atZone(ZoneId.systemDefault())
                         .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                "Set $topicTimestamp by ${params[2]}"
+                "Set $topicTimestamp by ${getParam(2)}"
             }
         //"353': // names list
             "366" -> // end of names
@@ -99,31 +103,29 @@ class ActivityEntry(
 
         // Error numerics
             "421" -> // unknown command
-                "${params[2]} ${params[1]}"
+                "${getParam(2)} ${getParam(1)}"
             "462" -> // you may not reregister
-                params[1]
+                "${getParam(1)}"
 
         // Messages
             "PRIVMSG", "NOTICE" ->
-                params[1]
+                "${getParam(1)}"
             "CTCP" -> {
-                params.let { params ->
-                    when (params[1]) {
-                        "ACTION" -> params[2] // handled by the layout
-                        else -> {
-                            val args = Joiner.on(' ').join(params.drop(1))
-                            "- $prefixName requested CTCP $args"
-                        }
+                when (getParam(1)) {
+                    "ACTION" -> "${getParam(2)}" // handled by the layout
+                    else -> {
+                        val args = Joiner.on(' ').join(params.drop(1))
+                        "- $prefixName requested CTCP $args"
                     }
                 }
             }
             "CTCP_ANSWER" ->
-                when (params[1]) {
+                when (getParam(1)) {
                     "ACTION" ->
-                        "* $prefixName ${params[2]}"
+                        "* $prefixName ${getParam(2)}"
                     else -> {
                         val args = Joiner.on(' ').join(params.drop(2))
-                        "- Received CTCP ${params[1]} reply from $prefixName: $args"
+                        "- Received CTCP ${getParam(1)} reply from $prefixName: $args"
                     }
                 }
             else ->
