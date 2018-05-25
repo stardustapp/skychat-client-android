@@ -11,14 +11,14 @@ class ActivityEntry(
         val path: String,
         props: Map<String, String>
 ) {
-    val command = props.getOrDefault("command", "")
+    private val command = props.getOrDefault("command", "")
     val prefixName = props.getOrDefault("prefix-name", "")
-    val prefixUser = props.getOrDefault("prefix-user", "")
-    val prefixHost = props.getOrDefault("prefix-host", "")
-    val extraPath = "$prefixUser@$prefixHost"
-    val source = props.getOrDefault("source", "")
+    private val prefixUser = props.getOrDefault("prefix-user", "")
+    private val prefixHost = props.getOrDefault("prefix-host", "")
+    private val extraPath = "$prefixUser@$prefixHost"
+    //private val source = props.getOrDefault("source", "")
     val timestamp = props["timestamp"]?.let { Instant.parse(it) }
-    val params = props
+    private val params = props
             .filter { pair -> pair.key.startsWith("params/") }
             .toSortedMap(Comparator { o1, o2 ->
                 val k1 = o1.split('/')[1].toInt()

@@ -65,12 +65,12 @@ class ActivityHistoryViewModel constructor(
                 })
     }
 
-    inner class PartitionModel(val partId: String) {
+    inner class PartitionModel(partId: String) {
         init {
             if (partId.isEmpty())
                 throw Exception("PartitionModel was given an empty partition ID")
         }
-        val partPath = "$logPath/log/$partId"
+        private val partPath = "$logPath/log/$partId"
 
         private val horizonSubject = BehaviorSubject.createDefault<String>("")
         private val latestSubject = BehaviorSubject.createDefault<String>("")
@@ -102,7 +102,7 @@ class ActivityHistoryViewModel constructor(
                     //.observeOn(AndroidSchedulers.mainThread())
                     .subscribe({ range ->
                         var firstId = range.horizon.toInt()
-                        var lastId = range.latest.toInt()
+                        val lastId = range.latest.toInt()
                         if (firstId < lastId - 15) {
                             firstId = lastId - 15
                         }

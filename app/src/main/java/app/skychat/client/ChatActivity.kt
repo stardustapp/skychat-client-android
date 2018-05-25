@@ -31,7 +31,7 @@ import java.util.*
 
 class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener, ActivityFragment.OnListFragmentInteractionListener {
     companion object {
-        val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
+        const val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
     }
 
     private lateinit var treeConnection: TreeConnection

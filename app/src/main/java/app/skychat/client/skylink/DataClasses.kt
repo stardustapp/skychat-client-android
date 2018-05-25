@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package app.skychat.client.skylink
 
 import com.google.common.collect.ImmutableList

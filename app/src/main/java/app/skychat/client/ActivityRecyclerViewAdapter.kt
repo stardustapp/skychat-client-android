@@ -112,7 +112,7 @@ class ActivityRecyclerViewAdapter(
         holder.bodyText.text = item.displayText()
 
         holder.timestamp.text = item.timestamp?.let {
-            Companion.timeFormatter.format(it)
+            timeFormatter.format(it)
         }
 
         with(holder.mView) {

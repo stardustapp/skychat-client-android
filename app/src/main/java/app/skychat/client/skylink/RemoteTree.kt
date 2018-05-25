@@ -13,7 +13,7 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.jackson.JacksonConverterFactory
 
 
-class RemoteTree constructor(private val apiUrl: String) {
+class RemoteTree constructor(apiUrl: String) {
 
     private val okHttpClient = OkHttpClient.Builder().build()
     private val retrofit = Retrofit.Builder()
@@ -33,6 +33,7 @@ class RemoteTree constructor(private val apiUrl: String) {
                 .blockingGet()
     }
 
+    @Suppress("unused")
     fun ping(): Boolean {
         return doOp(NetRequest("ping", null, null, null, null)).ok
     }

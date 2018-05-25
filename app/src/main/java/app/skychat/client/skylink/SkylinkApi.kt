@@ -5,6 +5,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 
+@Suppress("unused")
 interface SkylinkApi {
     @GET("/~~export/ping")
     fun ping(): Single<NetResponse>

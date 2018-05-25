@@ -18,7 +18,8 @@ import kotlinx.android.synthetic.main.activity_profiles.*
 class ProfilesActivity : AppCompatActivity() {
     private lateinit var viewModel: ProfileListViewModel
 
-    val ADD_PROFILE_ACTIVITY_REQUEST_CODE = 1
+    // for sending intents
+    private val addProfileRequestCode = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +48,7 @@ class ProfilesActivity : AppCompatActivity() {
         fab.setOnClickListener { _ ->
             startActivityForResult(
                     Intent(this, LoginActivity::class.java),
-                    ADD_PROFILE_ACTIVITY_REQUEST_CODE)
+                    addProfileRequestCode)
         }
     }
 
@@ -55,7 +56,7 @@ class ProfilesActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
 
         when (requestCode) {
-            ADD_PROFILE_ACTIVITY_REQUEST_CODE -> {
+            addProfileRequestCode -> {
                 if (resultCode == RESULT_OK) {
                     val profileId = data?.getStringExtra(LoginActivity.EXTRA_REPLY).orEmpty()
                     // thumbs up emoji. via https://apps.timwhitlock.info/emoji/tables/unicode

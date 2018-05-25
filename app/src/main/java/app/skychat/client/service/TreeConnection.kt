@@ -50,7 +50,7 @@ class TreeConnection(
             Context.MODE_PRIVATE)
 
     // structured database for sessions and credentials
-    val profileRepo = ProfileRepository(packageContext.applicationContext)
+    private val profileRepo = ProfileRepository(packageContext.applicationContext)
 
     // Selects the most recently 'used' profile, if any
     fun resumeLastProfile(): Maybe<Profile>  {
@@ -74,7 +74,7 @@ class TreeConnection(
                 .filter {
                     with (sharedPrefs.edit()) {
                         putString(packageContext.getString(R.string.preference_current_profile), it.profileId)
-                        commit()
+                        apply()
                     }
                     currentProfile = it
                     true
