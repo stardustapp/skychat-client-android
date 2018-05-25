@@ -2,6 +2,7 @@ package app.skychat.client
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.app.Activity
 import android.arch.lifecycle.ViewModelProviders
@@ -19,6 +20,8 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.TextView
 import app.skychat.client.actions.*
 import com.bugsnag.android.Bugsnag
+import io.reactivex.Maybe
+import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.content_login.*
 
@@ -31,15 +34,12 @@ import kotlinx.android.synthetic.main.content_login.*
  * A login screen that offers login via email/password.
  */
 class LoginActivity : AppCompatActivity() {
-    /**
-     * Keep track of the login task to ensure we can cancel it if requested.
-     */
-    private var mAuthTask: UserLoginTask? = null
-
     private lateinit var viewModel: ProfileListViewModel
 
+    private var currentAttempt: Maybe<UserLoginAttempt>? = null
+
     companion object {
-        val EXTRA_REPLY = "app.skylink.client.LoginActivity.REPLY"
+        const val EXTRA_REPLY = "app.skylink.client.LoginActivity.REPLY"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +78,7 @@ class LoginActivity : AppCompatActivity() {
     /**
      * Set up the {@link android.app.ActionBar}, if the API is available.
      */
+    @SuppressLint("ObsoleteSdkInt")
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     private fun setupActionBar() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
@@ -92,9 +93,7 @@ class LoginActivity : AppCompatActivity() {
      * errors are presented and no actual login attempt is made.
      */
     private fun attemptLogin() {
-        if (mAuthTask != null) {
-            return
-        }
+        currentAttempt?.run { return }
 
         // Reset errors.
         email.error = null
@@ -137,8 +136,63 @@ class LoginActivity : AppCompatActivity() {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true)
-            mAuthTask = UserLoginActivityTask(emailStr, passwordStr, viewModel.repository)
-            mAuthTask!!.execute(null as Void?)
+            val loginMaybe = UserLoginTask(emailStr, passwordStr, viewModel.repository).asMaybe()
+            currentAttempt = loginMaybe
+
+            loginMaybe
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({ attempt: UserLoginAttempt ->
+                        currentAttempt = null
+
+                        val result = attempt.result
+                        when (result) {
+                            is UserLoginSuccess -> {
+                                // startActivity(Intent(this@LoginActivity, ChatActivity::class.java))
+                                setResult(Activity.RESULT_OK, Intent().apply {
+                                    putExtra(EXTRA_REPLY, result.profileId)
+                                })
+                                finish() // animate out with progress animation still visible
+                            }
+                            is UserLoginFailure -> {
+                                showProgress(false)
+                                when (result.failureStage) {
+                                    FailureStage.NETWORK -> {
+                                        email.error = result.errorMessage
+                                        email.requestFocus()
+                                    }
+                                    FailureStage.REJECTED -> {
+                                        password.error = result.errorMessage
+                                        password.requestFocus()
+                                    }
+                                    FailureStage.CLIENT_BUG ->
+                                        Snackbar.make(email,
+                                                "${getString(R.string.error_client_bug)}. ${result.errorMessage}",
+                                                Snackbar.LENGTH_INDEFINITE).show()
+                                    FailureStage.SERVER_BUG ->
+                                        Snackbar.make(email,
+                                                "${getString(R.string.error_server_bug)}. ${result.errorMessage}",
+                                                Snackbar.LENGTH_INDEFINITE
+                                        ).setAction(getString(R.string.report_bug), { _ ->
+                                            Bugsnag.notify("Skylink confusion", result.errorMessage, emptyArray(), { report ->
+                                                report.error?.metaData?.apply {
+                                                    addToTab("Request", "address", attempt.attemptedAddress)
+                                                    addToTab("Request", "wall-time", attempt.wallTime)
+                                                }
+                                            })
+                                            Snackbar.make(email, getString(R.string.confirm_report_sent), Snackbar.LENGTH_SHORT).show()
+                                        }).show()
+                                }
+                            }
+                        }
+                    }, {
+                        Bugsnag.notify(it)
+                        Snackbar.make(email,
+                                "Uncaught Rx exception: ${it.message}",
+                                Snackbar.LENGTH_LONG).show()
+
+                        currentAttempt = null
+                        showProgress(false)
+                    })
         }
     }
 
@@ -153,6 +207,7 @@ class LoginActivity : AppCompatActivity() {
     /**
      * Shows the progress UI and hides the login form.
      */
+    @SuppressLint("ObsoleteSdkInt")
     @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
     private fun showProgress(show: Boolean) {
         // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
@@ -187,66 +242,4 @@ class LoginActivity : AppCompatActivity() {
             login_form.visibility = if (show) View.GONE else View.VISIBLE
         }
     }
-
-        /**
-         * Represents an asynchronous login/registration task used to authenticate
-         * the user.
-         */
-        inner class UserLoginActivityTask internal constructor(
-                addr: String,
-                pass: String,
-                profileRepo: ProfileRepository
-        ) : UserLoginTask(addr, pass, profileRepo) {
-            override fun onPostExecute(attempt: UserLoginAttempt) {
-                mAuthTask = null
-
-                val result = attempt.result
-                when (result) {
-                    is UserLoginSuccess -> {
-                        // startActivity(Intent(this@LoginActivity, ChatActivity::class.java))
-                        setResult(Activity.RESULT_OK, Intent().apply {
-                            putExtra(EXTRA_REPLY, result.profileId)
-                        })
-                        finish() // animate out with progress animation still visible
-                    }
-                    is UserLoginFailure -> {
-                        showProgress(false)
-                        return when (result.failureStage) {
-                            FailureStage.NETWORK -> {
-                                email.error = result.errorMessage
-                                email.requestFocus()
-                                return
-                            }
-                            FailureStage.REJECTED -> {
-                                password.error = result.errorMessage
-                                password.requestFocus()
-                                return
-                            }
-                            FailureStage.CLIENT_BUG ->
-                                Snackbar.make(email,
-                                        "${getString(R.string.error_client_bug)}. ${result.errorMessage}",
-                                        Snackbar.LENGTH_INDEFINITE).show()
-                            FailureStage.SERVER_BUG ->
-                                Snackbar.make(email,
-                                        "${getString(R.string.error_server_bug)}. ${result.errorMessage}",
-                                        Snackbar.LENGTH_INDEFINITE
-                                ).setAction(getString(R.string.report_bug), { _ ->
-                                    Bugsnag.notify("Skylink confusion", result.errorMessage, emptyArray(), { report ->
-                                        report.error?.metaData?.apply {
-                                            addToTab("Request", "address", attempt.attemptedAddress)
-                                            addToTab("Request", "wall-time", attempt.wallTime)
-                                        }
-                                    })
-                                    Snackbar.make(email, getString(R.string.confirm_report_sent), Snackbar.LENGTH_SHORT).show()
-                                }).show()
-                        }
-                    }
-                }
-            }
-
-            override fun onCancelled() {
-                mAuthTask = null
-                showProgress(false)
-            }
-        }
 }

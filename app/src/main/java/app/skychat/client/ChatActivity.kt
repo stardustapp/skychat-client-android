@@ -12,6 +12,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import app.skychat.client.actions.ListRoomsTask
+import app.skychat.client.data.Profile
 import app.skychat.client.service.TreeConnection
 import app.skychat.client.skylink.FolderLiteral
 import app.skychat.client.skylink.NetEntry
@@ -34,6 +35,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     private lateinit var treeConnection: TreeConnection
+    private lateinit var profileMaybe: Maybe<Profile>
 
     private var menuIds: Map<Int, ListRoomsTask.RoomEntry> = emptyMap()
 
@@ -71,7 +73,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 })
         }
 
-        val profileMaybe = if (this.intent.hasExtra(EXTRA_PROFILE)) {
+        profileMaybe = if (this.intent.hasExtra(EXTRA_PROFILE)) {
             treeConnection.resumeProfileById(
                     this.intent.getStringExtra(EXTRA_PROFILE)
                             ?: throw Error("EXTRA_PROFILE seen, but didn't get"))
@@ -79,6 +81,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             treeConnection.resumeLastProfile()
         }
 
+        // Pass the profile to the UI
         profileMaybe
                 .observeOn(AndroidSchedulers.mainThread())
                 // If no profile resumed, let the user create or select anew
@@ -88,41 +91,44 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     finish()
                     it.onComplete()
                 })
-                // Once we have a profile
-                .subscribe({ profile ->
-                    object : ListRoomsTask(profile, "irc/networks", "freenode") {
-                        override fun onPostExecute(result: Result?) {
-                            super.onPostExecute(result)
-                            nav_header_realname.text = profile.realName ?: "N/A"
-                            nav_header_address.text = profile.run { "$userName@$domainName" }
-                            overall_progress.visibility = View.GONE
 
-                            val navMenu: NavigationView = findViewById(R.id.nav_view)
-                            val itemMap = HashMap<Int, RoomEntry>()
-                            var menuIdx = 0
-                            navMenu.menu.apply {
-                                clear()
-                                val channelMenu = addSubMenu("Channels")
-                                result?.groupRooms?.forEach { channelMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
-                                    isCheckable = true
-                                    setIcon(R.drawable.ic_menu_send)
-                                    itemMap[itemId] = it
-                                }}
-                                val queryMenu = addSubMenu("Queries")
-                                result?.directRooms?.forEach { queryMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
-                                    isCheckable = true
-                                    itemMap[itemId] = it
-                                } }
-                                result?.backgroundRoom?.let { add(0, ++menuIdx, menuIdx, "server").apply {
-                                    isCheckable = true
-                                    itemMap[itemId] = it
-                                } }
-                            }
-                            menuIds = ImmutableMap.copyOf(itemMap)
+        // Pull in the room list
+        profileMaybe
+                .map { ListRoomsTask(it, "irc/networks", "freenode") }
+                .flatMap { it.asMaybe() }
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ it ->
+                    overall_progress.visibility = View.GONE
 
-                            drawer_layout.openDrawer(GravityCompat.START)
-                        }
-                    }.execute(null as Void?)
+                    treeConnection.currentProfile?.apply {
+                        nav_header_realname.text = this.realName ?: "N/A"
+                        nav_header_address.text = this.run { "$userName@$domainName" }
+                    }
+
+                    val navMenu: NavigationView = findViewById(R.id.nav_view)
+                    val itemMap = HashMap<Int, ListRoomsTask.RoomEntry>()
+                    var menuIdx = 0
+                    navMenu.menu.apply {
+                        clear()
+                        val channelMenu = addSubMenu("Channels")
+                        it.groupRooms.forEach { channelMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
+                            isCheckable = true
+                            setIcon(R.drawable.ic_menu_send)
+                            itemMap[itemId] = it
+                        } }
+                        val queryMenu = addSubMenu("Queries")
+                        it.directRooms.forEach { queryMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
+                            isCheckable = true
+                            itemMap[itemId] = it
+                        } }
+                        it.backgroundRoom?.let { add(0, ++menuIdx, menuIdx, "server").apply {
+                            isCheckable = true
+                            itemMap[itemId] = it
+                        } }
+                    }
+                    menuIds = ImmutableMap.copyOf(itemMap)
+
+                    drawer_layout.openDrawer(GravityCompat.START)
                 }, { error ->
                     Bugsnag.notify(error)
                     Toast.makeText(this, error.message, Toast.LENGTH_LONG).show()

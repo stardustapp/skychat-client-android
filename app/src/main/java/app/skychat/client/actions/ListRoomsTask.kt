@@ -1,14 +1,14 @@
 package app.skychat.client.actions
 
-import android.os.AsyncTask
 import app.skychat.client.data.Profile
 import app.skychat.client.skylink.remoteTreeFor
+import app.skychat.client.utils.ReactiveAsyncTask
 
-abstract class ListRoomsTask (
+class ListRoomsTask (
         private val profile: Profile,
         private val communityType: String,
         private val communityId: String)
-    : AsyncTask<Void, Void, ListRoomsTask.Result>() {
+    : ReactiveAsyncTask<Void, ListRoomsTask.Result>() {
 
     data class RoomEntry (
             val name: String,

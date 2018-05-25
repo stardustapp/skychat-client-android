@@ -1,11 +1,11 @@
 package app.skychat.client.actions
 
-import android.os.AsyncTask
 import app.skychat.client.BuildConfig
 import app.skychat.client.ProfileRepository
 import app.skychat.client.skylink.FolderLiteral
 import app.skychat.client.skylink.StringLiteral
 import app.skychat.client.skylink.remoteTreeFor
+import app.skychat.client.utils.ReactiveAsyncTask
 import app.skychat.client.utils.Stopwatch
 import com.bugsnag.android.Bugsnag
 import com.bugsnag.android.Severity
@@ -16,11 +16,11 @@ import java.net.UnknownHostException
  * Represents an asynchronous login/registration task used to authenticate
  * the user.
  */
-abstract class UserLoginTask (
+class UserLoginTask (
         private val givenAddress: String,
         private val givenPassword: String,
         private val profileRepo: ProfileRepository)
-    : AsyncTask<Void, Void, UserLoginAttempt>() {
+    : ReactiveAsyncTask<Void, UserLoginAttempt>() {
     private val addressParts = givenAddress.split('@')
 
     override fun doInBackground(vararg params: Void): UserLoginAttempt {
@@ -36,7 +36,7 @@ abstract class UserLoginTask (
                         UserLoginFailure(cause.message ?: "Unknown host", FailureStage.NETWORK)
                     else -> {
                         Bugsnag.notify(ex)
-                        UserLoginFailure("UserLoginTask crashed: ${ex.message ?: "No message"}", FailureStage.CLIENT_BUG)
+                        UserLoginFailure("UserLoginTask crashed: $ex", FailureStage.CLIENT_BUG)
                     }
                 }
             } catch (t: Throwable) {

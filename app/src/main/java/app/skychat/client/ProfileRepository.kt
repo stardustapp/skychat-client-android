@@ -28,19 +28,6 @@ class ProfileRepository(context: Context) {
         return profileDao.findSingleByProfileId(profileId)
     }
 
-    /*
-    fun insert(profile: Profile) {
-        insertAsyncTask(profileDao).execute(profile)
-    }
-    private class insertAsyncTask internal constructor(private val asyncTaskDao: ProfileDao)
-        : AsyncTask<Profile, Void, Void>() {
-        override fun doInBackground(vararg params: Profile): Void? {
-            asyncTaskDao.insert(params[0])
-            return null
-        }
-    }
-    */
-
     fun storeSessionBlocking(newSession: UserLoginSuccess, username: String, domainName: String) {
         profileDao.findByProfileId(newSession.profileId)
                 ?.also {
@@ -51,17 +38,15 @@ class ProfileRepository(context: Context) {
                     it.domainName = domainName
                     profileDao.update(it)
                 }
-                ?: apply {
-                    // create a new saved profile
-                    Profile().also {
-                        it.profileId = newSession.profileId
-                        it.sessionId = newSession.sessionId
-                        it.realName = newSession.ownerName
-                        it.userName = username
-                        it.domainName = domainName
-                        it.addedAt = Instant.now()
-                        profileDao.insert(it)
-                    }
+                ?: Profile().also {
+                    // insert a new profile with initial session info
+                    it.profileId = newSession.profileId
+                    it.sessionId = newSession.sessionId
+                    it.realName = newSession.ownerName
+                    it.userName = username
+                    it.domainName = domainName
+                    it.addedAt = Instant.now()
+                    profileDao.insert(it)
                 }
     }
 }
