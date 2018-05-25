@@ -15,7 +15,7 @@
 
         <activity
             android:name=".ProfilesActivity"
-            android:label="@string/title_activity_chat"
+            android:label="@string/title_activity_profiles"
             android:parentActivityName=".ChatActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
@@ -41,10 +41,12 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".service.TreeService" />
+
         <meta-data
             android:name="com.bugsnag.android.API_KEY"
             android:value="81a7d3832f445969a79b09f990de7e32"/>
-
     </application>
 
 </manifest>

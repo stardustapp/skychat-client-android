@@ -8,7 +8,7 @@ import io.reactivex.Maybe
 import io.reactivex.schedulers.Schedulers
 
 class ProfileListViewModel constructor(app: Application) : AndroidViewModel(app) {
-    public val repository: ProfileRepository = ProfileRepository(app)
+    val repository: ProfileRepository = ProfileRepository(app)
     private val allProfiles = repository.getAllProfiles()
 
     fun getAllProfiles(): LiveData<List<Profile>> {

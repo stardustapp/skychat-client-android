@@ -1,9 +1,6 @@
 package app.skychat.client
 
-import android.arch.lifecycle.ViewModelProviders
-import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.support.design.widget.NavigationView
 import android.support.design.widget.Snackbar
@@ -15,7 +12,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import app.skychat.client.actions.ListRoomsTask
-import app.skychat.client.data.Profile
+import app.skychat.client.service.TreeConnection
 import app.skychat.client.skylink.FolderLiteral
 import app.skychat.client.skylink.NetEntry
 import app.skychat.client.skylink.StringLiteral
@@ -23,6 +20,7 @@ import app.skychat.client.skylink.remoteTreeFor
 import com.bugsnag.android.Bugsnag
 import com.google.common.collect.ImmutableMap
 import io.reactivex.Maybe
+import io.reactivex.MaybeSource
 import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.android.synthetic.main.activity_chat.*
 import kotlinx.android.synthetic.main.app_bar_chat.*
@@ -35,9 +33,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
     }
 
-    private lateinit var profile: Profile
-    private lateinit var viewModelProvider: ProfileListViewModel
-    private lateinit var sharedPrefs: SharedPreferences
+    private lateinit var treeConnection: TreeConnection
 
     private var menuIds: Map<Int, ListRoomsTask.RoomEntry> = emptyMap()
 
@@ -45,6 +41,9 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
         setSupportActionBar(toolbar)
+
+        treeConnection = TreeConnection(this)
+                .also { it.bind() }
 
         send_message_btn.setOnClickListener { view ->
             val message = message_input.text.toString()
@@ -72,44 +71,25 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 })
         }
 
-        viewModelProvider = ViewModelProviders.of(this)
-                .get(ProfileListViewModel::class.java)
-
-        sharedPrefs = getSharedPreferences(
-                getString(R.string.preference_state_file_key), Context.MODE_PRIVATE)
-
-        // guess the profile
-        val profileId = if (this.intent.hasExtra(EXTRA_PROFILE)) {
-            this.intent.getStringExtra(EXTRA_PROFILE)
-                    ?: throw Error("EXTRA_PROFILE seen, but didn't get")
+        val profileMaybe = if (this.intent.hasExtra(EXTRA_PROFILE)) {
+            treeConnection.resumeProfileById(
+                    this.intent.getStringExtra(EXTRA_PROFILE)
+                            ?: throw Error("EXTRA_PROFILE seen, but didn't get"))
         } else {
-            sharedPrefs.getString(getString(R.string.preference_current_profile),
-                    "none")
+            treeConnection.resumeLastProfile()
         }
 
-        viewModelProvider
-                .getOneProfile(profileId)
-                .switchIfEmpty(Maybe.fromCallable({
-                    viewModelProvider
-                            .getAllProfiles()
-                            .value.orEmpty()
-                            .firstOrNull()
-                            .also { if (it == null) {
-                                // let the user add an initial profile
-                                startActivity(Intent(this,
-                                        ProfilesActivity::class.java))
-                                finish()
-                            }}
-                }))
-                .filter {
-                    with (sharedPrefs.edit()) {
-                        putString(getString(R.string.preference_current_profile), it.profileId)
-                        commit()
-                    };true
-                }
+        profileMaybe
                 .observeOn(AndroidSchedulers.mainThread())
+                // If no profile resumed, let the user create or select anew
+                .switchIfEmpty(MaybeSource {
+                    startActivity(Intent(this,
+                            ProfilesActivity::class.java))
+                    finish()
+                    it.onComplete()
+                })
+                // Once we have a profile
                 .subscribe({ profile ->
-                    this.profile = profile
                     object : ListRoomsTask(profile, "irc/networks", "freenode") {
                         override fun onPostExecute(result: Result?) {
                             super.onPostExecute(result)
@@ -145,10 +125,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     }.execute(null as Void?)
                 }, { error ->
                     Bugsnag.notify(error)
-                    Toast(this@ChatActivity).let {
-                        it.setText(error.message)
-                        it.show()
-                    }
+                    Toast.makeText(this, error.message, Toast.LENGTH_LONG).show()
                     finish()
                 })
 
@@ -162,14 +139,18 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     private fun sendIrcPacket(command: String, vararg params: String): Maybe<NetEntry> {
-        return remoteTreeFor(profile.domainName!!)
-                .invokeRx("/sessions/${profile.sessionId}/mnt/runtime/apps/irc/namespace/state/networks/${"freenode"}/wire/send/invoke",
-                        FolderLiteral("",
-                                StringLiteral("command", command),
-                                FolderLiteral("params", *params.mapIndexed({ index, s ->
-                                    StringLiteral((index+1).toString(), s)
-                                }).toTypedArray())))
-                .filter { evt -> evt.type == "String" }
+        return Maybe
+                .just(treeConnection.currentProfile)
+                .flatMap { profile ->
+                    remoteTreeFor(profile.domainName!!)
+                            .invokeRx("/sessions/${profile.sessionId}/mnt/runtime/apps/irc/namespace/state/networks/${"freenode"}/wire/send/invoke",
+                                    FolderLiteral("",
+                                            StringLiteral("command", command),
+                                            FolderLiteral("params", *params.mapIndexed({ index, s ->
+                                                StringLiteral((index + 1).toString(), s)
+                                            }).toTypedArray())))
+                            .filter { evt -> evt.type == "String" }
+                }
     }
 
     private fun slashCommand(message: String, currentRoom: String): Maybe<NetEntry> {
@@ -195,6 +176,11 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        treeConnection.unbind()
+    }
+
     override fun onBackPressed() {
         if (drawer_layout.isDrawerOpen(GravityCompat.START)) {
             drawer_layout.closeDrawer(GravityCompat.START)
@@ -213,42 +199,35 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        when (item.itemId) {
+        return when (item.itemId) {
             R.id.action_add_profile -> {
                 startActivity(Intent(this, LoginActivity::class.java))
-                return true
+                true
             }
             R.id.action_manage_profiles -> {
                 startActivity(Intent(this, ProfilesActivity::class.java))
-                return true
+                true
             }
-            else -> return super.onOptionsItemSelected(item)
+            else -> super.onOptionsItemSelected(item)
         }
     }
 
     //var currentMenuItem: MenuItem? = null
-    var currentRoom: ListRoomsTask.RoomEntry? = null
-    var currentActivityFrag: ActivityFragment? = null
+    private var currentRoom: ListRoomsTask.RoomEntry? = null
+    private var currentActivityFrag: ActivityFragment? = null
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
-        /*currentMenuItem?.isChecked = false
-        item.isCheckable = true
-        item.isChecked = true
-
-        currentMenuItem = item*/
         drawer_layout.closeDrawer(GravityCompat.START)
 
         val fragmentManager = supportFragmentManager
         val fragmentTransaction = fragmentManager.beginTransaction()
 
-        currentActivityFrag?.let {
-            fragmentTransaction.remove(it)
-        }
+        currentActivityFrag?.let(fragmentTransaction::remove)
         currentActivityFrag = null
 
         currentRoom = menuIds[item.itemId]
         currentRoom?.let {
-            currentActivityFrag = ActivityFragment.newInstance(profile.domainName!!, it.path)
+            currentActivityFrag = ActivityFragment.newInstance(treeConnection.currentProfile?.domainName!!, it.path)
             fragmentTransaction.add(R.id.chat_history_frame, currentActivityFrag)
             title = "${it.name} on Freenode"
         }

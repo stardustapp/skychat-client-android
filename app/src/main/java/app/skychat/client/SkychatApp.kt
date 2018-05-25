@@ -9,6 +9,7 @@ class SkychatApp : Application() {
         super.onCreate()
 
         Bugsnag.init(this)
+        Bugsnag.setNotifyReleaseStages("prod") // disable reporting
         AndroidThreeTen.init(this)
     }
 }

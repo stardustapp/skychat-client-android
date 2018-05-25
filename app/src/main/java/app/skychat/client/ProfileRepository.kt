@@ -1,7 +1,7 @@
 package app.skychat.client
 
-import android.app.Application
 import android.arch.lifecycle.LiveData
+import android.content.Context
 import app.skychat.client.actions.UserLoginSuccess
 import app.skychat.client.data.Profile
 import app.skychat.client.data.ProfileDao
@@ -10,12 +10,12 @@ import io.reactivex.Maybe
 import org.threeten.bp.Instant
 
 
-class ProfileRepository(application: Application) {
+class ProfileRepository(context: Context) {
     private val profileDao: ProfileDao
     private val allProfiles: LiveData<List<Profile>>
 
     init {
-        val db = getDatabase(application)
+        val db = getDatabase(context)
         profileDao = db.profileDao()
         allProfiles = profileDao.getAll()
     }
