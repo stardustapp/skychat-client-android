@@ -41,54 +41,21 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     private var menuIds: Map<Int, ListRoomsTask.RoomEntry> = emptyMap()
 
-    fun sendIrcPacket(command: String, vararg params: String): Maybe<NetEntry> {
-        return remoteTreeFor(profile.domainName!!)
-                .invokeRx("/sessions/${profile.sessionId}/mnt/runtime/apps/irc/namespace/state/networks/${"freenode"}/wire/send/invoke",
-                        FolderLiteral("",
-                                StringLiteral("command", command),
-                                FolderLiteral("params", *params.mapIndexed({ index, s ->
-                                    StringLiteral((index+1).toString(), s)
-                                }).toTypedArray())))
-                .filter { evt -> evt.type == "String" }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
         setSupportActionBar(toolbar)
 
         send_message_btn.setOnClickListener { view ->
-            val currentTarget = currentRoom?.name ?: "0"
-
             val message = message_input.text.toString()
-            //message_input.text = ""
-
-            val maybe = if (message[0] == '/') {
-                val parts = message.drop(1).split(' ')
-                val command = parts[0].toLowerCase()
-                val params = parts.drop(1)
-
-                when (command) {
-                    "msg" -> sendIrcPacket(
-                            "PRIVMSG", params[0],
-                            params.drop(1).joinToString(" "))
-                    "me" -> sendIrcPacket(
-                            "CTCP", currentTarget,
-                            "ACTION", params.joinToString(" "))
-                    "slap" -> sendIrcPacket(
-                            "CTCP", currentTarget,
-                            "ACTION", "slaps ${params.joinToString(" ")} around a bit with a large trout")
-                    "ctcp" -> sendIrcPacket(
-                            "CTCP", params[0],
-                            params[1], params.drop(2).joinToString(" "))
-                    else -> Maybe.error(
-                            IllegalArgumentException("Invalid slash command /$command"))
-                }
-            } else sendIrcPacket(
-                    "PRIVMSG", currentTarget,
-                    message) // TODO: splitting for length
-
-            maybe
+            when {
+                message.isEmpty() ->
+                    Maybe.just(NetEntry("mock", "String", "Ok", null, null))
+                message[0] == '/' ->
+                    slashCommand(message, currentRoom?.name ?: "0")
+                else ->
+                    sendIrcPacket("PRIVMSG", currentRoom?.name ?: "0", message)
+            }
                 .observeOn(AndroidSchedulers.mainThread())
                 .defaultIfEmpty(StringLiteral("output", "Unknown error"))
                 .subscribe({ x ->
@@ -192,6 +159,40 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         toggle.syncState()
 
         nav_view.setNavigationItemSelectedListener(this)
+    }
+
+    private fun sendIrcPacket(command: String, vararg params: String): Maybe<NetEntry> {
+        return remoteTreeFor(profile.domainName!!)
+                .invokeRx("/sessions/${profile.sessionId}/mnt/runtime/apps/irc/namespace/state/networks/${"freenode"}/wire/send/invoke",
+                        FolderLiteral("",
+                                StringLiteral("command", command),
+                                FolderLiteral("params", *params.mapIndexed({ index, s ->
+                                    StringLiteral((index+1).toString(), s)
+                                }).toTypedArray())))
+                .filter { evt -> evt.type == "String" }
+    }
+
+    private fun slashCommand(message: String, currentRoom: String): Maybe<NetEntry> {
+        val parts = message.drop(1).split(' ')
+        val command = parts[0].toLowerCase()
+        val params = parts.drop(1)
+
+        return when (command) {
+            "msg" -> sendIrcPacket(
+                    "PRIVMSG", params[0],
+                    params.drop(1).joinToString(" "))
+            "me" -> sendIrcPacket(
+                    "CTCP", currentRoom,
+                    "ACTION", params.joinToString(" "))
+            "slap" -> sendIrcPacket(
+                    "CTCP", currentRoom,
+                    "ACTION", "slaps ${params.joinToString(" ")} around a bit with a large trout")
+            "ctcp" -> sendIrcPacket(
+                    "CTCP", params[0],
+                    params[1], params.drop(2).joinToString(" "))
+            else -> Maybe.error(
+                    IllegalArgumentException("Invalid slash command /$command"))
+        }
     }
 
     override fun onBackPressed() {
