@@ -27,7 +27,7 @@ class ListRoomsTask (
 
         return Result(
                 channels.map { chan -> RoomEntry(chan.name, "$communityPath/channels/${chan.name}") },
-                queries.map { chan -> RoomEntry(chan.name, "$communityPath/channels/${chan.name}") },
+                queries.map { query -> RoomEntry(query.name, "$communityPath/queries/${ query.name}") },
                 serverLog?.let { RoomEntry("Server activity", "$communityPath/server-log") } )
     }
 }
