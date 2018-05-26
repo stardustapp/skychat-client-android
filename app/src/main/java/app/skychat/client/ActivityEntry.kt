@@ -12,6 +12,7 @@ class ActivityEntry(
         props: Map<String, String>
 ) {
     private val command = props.getOrDefault("command", "")
+    private val text = props.getOrDefault("text", "") // used for synthetic events
     val prefixName = props.getOrDefault("prefix-name", "")
     private val prefixUser = props.getOrDefault("prefix-user", "")
     private val prefixHost = props.getOrDefault("prefix-host", "")
@@ -106,6 +107,10 @@ class ActivityEntry(
                 "${getParam(2)} ${getParam(1)}"
             "462" -> // you may not reregister
                 "${getParam(1)}"
+
+        // Blocks - synthetic multiline messages, usually bursts from a server
+            "BLOCK" ->
+                "${Joiner.on(' ').join(params)}\n$text"
 
         // Messages
             "PRIVMSG", "NOTICE" ->
