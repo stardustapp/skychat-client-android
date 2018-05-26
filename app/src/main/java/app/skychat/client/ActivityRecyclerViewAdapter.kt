@@ -1,6 +1,5 @@
 package app.skychat.client
 
-
 import android.graphics.Color
 import android.graphics.Typeface
 import android.support.v7.widget.RecyclerView
@@ -11,7 +10,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import app.skychat.client.ActivityFragment.OnListFragmentInteractionListener
-import app.skychat.client.dummy.DummyContent.DummyItem
 import com.amulyakhare.textdrawable.TextDrawable
 import com.amulyakhare.textdrawable.util.ColorGenerator
 import kotlinx.android.synthetic.main.fragment_activity.view.*
@@ -19,11 +17,8 @@ import org.threeten.bp.ZoneId
 import org.threeten.bp.format.DateTimeFormatter
 import org.threeten.bp.format.FormatStyle
 
-
-
-
 /**
- * [RecyclerView.Adapter] that can display a [DummyItem] and makes a call to the
+ * [RecyclerView.Adapter] that can display [ActivityEntry]s and makes a call to the
  * specified [OnListFragmentInteractionListener].
  * TODO: Replace the implementation with code for your data type.
  */

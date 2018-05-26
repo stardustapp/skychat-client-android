@@ -113,12 +113,19 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                         val channelMenu = addSubMenu("Channels")
                         it.groupRooms.forEach { channelMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
                             isCheckable = true
-                            setIcon(R.drawable.ic_menu_send)
+                            if (it.name.startsWith("##") && !it.name.startsWith("###")) {
+                                title = it.name.drop(2)
+                                setIcon(R.drawable.ic_double_octothorpe_green)
+                            } else if (it.name.startsWith("#")) {
+                                title = it.name.drop(1)
+                                setIcon(R.drawable.ic_octothorpe_green)
+                            }
                             itemMap[itemId] = it
                         } }
                         val queryMenu = addSubMenu("Queries")
                         it.directRooms.forEach { queryMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
                             isCheckable = true
+                            setIcon(R.drawable.ic_person_green)
                             itemMap[itemId] = it
                         } }
                         it.backgroundRoom?.let { add(0, ++menuIdx, menuIdx, "server").apply {

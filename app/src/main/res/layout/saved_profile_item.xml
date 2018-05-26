@@ -12,7 +12,7 @@
         android:layout_height="56dp"
         android:layout_gravity="center"
         android:contentDescription="@string/desc_saved_profile"
-        android:src="@drawable/ic_person_green_24dp" />
+        android:src="@drawable/ic_person_green" />
 
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:orientation="vertical"
