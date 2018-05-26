@@ -4,9 +4,18 @@ import app.skychat.client.data.Profile
 import app.skychat.client.skylink.FolderLiteral
 import app.skychat.client.skylink.NetEntry
 import app.skychat.client.skylink.StringLiteral
+import app.skychat.client.skylink.remoteTreeFor
 import io.reactivex.Maybe
 
 object Irc {
+
+    fun getAllNetworks(profile: Profile): List<Network> {
+        val networksPath = "/sessions/${profile.sessionId}/mnt/persist/irc/networks"
+        val remoteTree = remoteTreeFor(profile.domainName!!)
+        return remoteTree.enumerate(networksPath).drop(1).map {
+            Network(profile, it.name)
+        }
+    }
 
     // Represents an IRC network, hopefully with a live wire
     class Network(

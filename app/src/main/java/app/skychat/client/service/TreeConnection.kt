@@ -64,6 +64,7 @@ class TreeConnection(
                     true
                 }
                 .subscribeOn(Schedulers.io())
+                .cache()
     }
 
     // Selects the named profile, if it exists

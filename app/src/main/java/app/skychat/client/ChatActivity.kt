@@ -11,7 +11,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
-import app.skychat.client.actions.ListRoomsTask
+import app.skychat.client.chat.ChatCommunity
 import app.skychat.client.chat.ChatRoom
 import app.skychat.client.chat.Irc
 import app.skychat.client.data.Profile
@@ -22,7 +22,9 @@ import com.bugsnag.android.Bugsnag
 import com.google.common.collect.ImmutableMap
 import io.reactivex.Maybe
 import io.reactivex.MaybeSource
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_chat.*
 import kotlinx.android.synthetic.main.app_bar_chat.*
 import kotlinx.android.synthetic.main.content_chat.*
@@ -38,6 +40,9 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private lateinit var profileMaybe: Maybe<Profile>
 
     private var menuIds: Map<Int, ChatRoom> = emptyMap()
+
+    private var communities: List<ChatCommunity> = emptyList()
+    private var communityRooms: MutableMap<ChatCommunity, List<ChatRoom>> = mutableMapOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,52 +103,47 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     it.onComplete()
                 })
 
-        // Pull in the room list
-        profileMaybe
-                .map { Irc.Network(it, "freenode") } // TODO: IRC specific - source dynamically
-                .flatMap { ListRoomsTask().asMaybe(it) }
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ it ->
-                    overall_progress.visibility = View.GONE
+        // Fetch community list (just IRC networks for now)
+        val communitiesMaybe = profileMaybe.flatMap {
+            Maybe
+                    .fromCallable({ Irc.getAllNetworks(it) })
+                    .subscribeOn(Schedulers.io())
+        }.cache()
 
+        // Seed UI with community list
+        communitiesMaybe
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ list ->
                     treeConnection.currentProfile?.apply {
                         nav_header_realname.text = this.realName ?: "N/A"
                         nav_header_address.text = this.run { "$userName@$domainName" }
                     }
 
-                    val navMenu: NavigationView = findViewById(R.id.nav_view)
-                    val itemMap = HashMap<Int, ChatRoom>()
-                    navMenu.menu.clear()
-                    val communityMenu = navMenu.menu.addSubMenu("Freenode") // TODO: dynamic
-                    var menuIdx = 0
-                    it.forEach {
-                        communityMenu.add(0, ++menuIdx, menuIdx, it.id).apply {
-                            isCheckable = true
-                            when (it) {
-                                is Irc.ChannelRoom -> {
-                                    setIcon(when (it.prefix) {
-                                        "##" -> R.drawable.ic_double_octothorpe_green
-                                        "#" -> R.drawable.ic_octothorpe_green
-                                        else -> R.drawable.ic_people_green
-                                    })
-                                    title = it.postPrefix
-                                }
-                                is Irc.QueryRoom -> {
-                                    setIcon(R.drawable.ic_person_green)
-                                }
-                                is Irc.ServerRoom -> {
-                                    setIcon(R.drawable.ic_router_green)
-                                }
-                            }
-                            itemMap[itemId] = it
-                        }
-                    }
-                    menuIds = ImmutableMap.copyOf(itemMap)
-
+                    communities = list
+                    renderRoomMenu()
                     drawer_layout.openDrawer(GravityCompat.START)
+                })
+
+        // Load each community's rooms
+        communitiesMaybe
+                .flatMapObservable { Observable.fromIterable(it) }
+                .flatMapMaybe { community -> Maybe
+                        .fromCallable({ community.getRooms() })
+                        .subscribeOn(Schedulers.io())
+                        .filter({
+                            communityRooms[community] = it
+                            true
+                        })
+                }
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnComplete {
+                    overall_progress.visibility = View.GONE
+                }
+                .subscribe({
+                    renderRoomMenu()
                 }, { error ->
                     Bugsnag.notify(error)
-                    Toast.makeText(this, error.message, Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Failed to load rooms. ${error.message}", Toast.LENGTH_LONG).show()
                     finish()
                 })
 
@@ -225,5 +225,40 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     override fun onListFragmentInteraction(entry: ActivityEntry) {
 
+    }
+
+    fun renderRoomMenu() {
+
+        val navMenu: NavigationView = findViewById(R.id.nav_view)
+        val itemMap = HashMap<Int, ChatRoom>()
+        navMenu.menu.clear()
+        var menuIdx = 0
+        communities.forEach {
+            val communityMenu = navMenu.menu.addSubMenu(it.id)
+            val rooms = communityRooms.getOrDefault(it, emptyList())
+            rooms.forEach {
+                communityMenu.add(0, ++menuIdx, menuIdx, it.id).apply {
+                    isCheckable = true
+                    when (it) {
+                        is Irc.ChannelRoom -> {
+                            setIcon(when (it.prefix) {
+                                "##" -> R.drawable.ic_double_octothorpe_green
+                                "#" -> R.drawable.ic_octothorpe_green
+                                else -> R.drawable.ic_people_green
+                            })
+                            title = it.postPrefix
+                        }
+                        is Irc.QueryRoom -> {
+                            setIcon(R.drawable.ic_person_green)
+                        }
+                        is Irc.ServerRoom -> {
+                            setIcon(R.drawable.ic_router_green)
+                        }
+                    }
+                    itemMap[itemId] = it
+                }
+            }
+        }
+        menuIds = ImmutableMap.copyOf(itemMap)
     }
 }
