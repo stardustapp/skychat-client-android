@@ -53,9 +53,9 @@ class ActivityHistoryViewModel constructor(
         this.remoteTree = remoteTreeFor(domainName)
         this.logPath = logPath
 
-        remoteTree.getStringRx("$logPath/log/horizon")
+        remoteTree.getStringRx("$logPath/horizon")
                 .subscribe({ horizon -> horizonPartSubject.onNext(horizon) })
-        remoteTree.getStringRx("$logPath/log/latest")
+        remoteTree.getStringRx("$logPath/latest")
                 .subscribe({ latest -> latestPartSubject.onNext(latest) })
 
         latestPartSubject
@@ -70,7 +70,7 @@ class ActivityHistoryViewModel constructor(
             if (partId.isEmpty())
                 throw Exception("PartitionModel was given an empty partition ID")
         }
-        private val partPath = "$logPath/log/$partId"
+        private val partPath = "$logPath/$partId"
 
         private val horizonSubject = BehaviorSubject.createDefault<String>("")
         private val latestSubject = BehaviorSubject.createDefault<String>("")

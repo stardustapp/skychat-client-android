@@ -12,12 +12,12 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import app.skychat.client.actions.ListRoomsTask
+import app.skychat.client.chat.ChatRoom
+import app.skychat.client.chat.Irc
 import app.skychat.client.data.Profile
 import app.skychat.client.service.TreeConnection
-import app.skychat.client.skylink.FolderLiteral
 import app.skychat.client.skylink.NetEntry
 import app.skychat.client.skylink.StringLiteral
-import app.skychat.client.skylink.remoteTreeFor
 import com.bugsnag.android.Bugsnag
 import com.google.common.collect.ImmutableMap
 import io.reactivex.Maybe
@@ -37,7 +37,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private lateinit var treeConnection: TreeConnection
     private lateinit var profileMaybe: Maybe<Profile>
 
-    private var menuIds: Map<Int, ListRoomsTask.RoomEntry> = emptyMap()
+    private var menuIds: Map<Int, ChatRoom> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,13 +49,14 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
         send_message_btn.setOnClickListener { view ->
             val message = message_input.text.toString()
+            val room = currentRoom ?: return@setOnClickListener
             when {
                 message.isEmpty() ->
                     Maybe.just(NetEntry("mock", "String", "Ok", null, null))
                 message[0] == '/' ->
-                    slashCommand(message, currentRoom?.name ?: "0")
+                    slashCommand(message, room)
                 else ->
-                    sendIrcPacket("PRIVMSG", currentRoom?.name ?: "0", message)
+                    room.sendMessage(message)
             }
                 .observeOn(AndroidSchedulers.mainThread())
                 .defaultIfEmpty(StringLiteral("output", "Unknown error"))
@@ -67,9 +68,14 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 Snackbar.LENGTH_LONG).show()
                     }
                 }, { err ->
-                    Bugsnag.notify(err)
-                    Snackbar.make(view, "Crashed sending message: ${err.message}",
-                            Snackbar.LENGTH_LONG).show()
+                    if (err !is IllegalArgumentException) {
+                        Bugsnag.notify(err)
+                        Snackbar.make(view, err.localizedMessage ?: "IllegalArgumentException",
+                                Snackbar.LENGTH_SHORT).show()
+                    } else {
+                        Snackbar.make(view, "Crashed sending message: ${err.message}",
+                                Snackbar.LENGTH_LONG).show()
+                    }
                 })
         }
 
@@ -94,8 +100,8 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
         // Pull in the room list
         profileMaybe
-                .map { ListRoomsTask(it, "irc/networks", "freenode") }
-                .flatMap { it.asMaybe() }
+                .map { Irc.Network(it, "freenode") } // TODO: IRC specific - source dynamically
+                .flatMap { ListRoomsTask().asMaybe(it) }
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ it ->
                     overall_progress.visibility = View.GONE
@@ -106,32 +112,31 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     }
 
                     val navMenu: NavigationView = findViewById(R.id.nav_view)
-                    val itemMap = HashMap<Int, ListRoomsTask.RoomEntry>()
+                    val itemMap = HashMap<Int, ChatRoom>()
+                    navMenu.menu.clear()
+                    val communityMenu = navMenu.menu.addSubMenu("Freenode") // TODO: dynamic
                     var menuIdx = 0
-                    navMenu.menu.apply {
-                        clear()
-                        val channelMenu = addSubMenu("Channels")
-                        it.groupRooms.forEach { channelMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
+                    it.forEach {
+                        communityMenu.add(0, ++menuIdx, menuIdx, it.id).apply {
                             isCheckable = true
-                            if (it.name.startsWith("##") && !it.name.startsWith("###")) {
-                                title = it.name.drop(2)
-                                setIcon(R.drawable.ic_double_octothorpe_green)
-                            } else if (it.name.startsWith("#")) {
-                                title = it.name.drop(1)
-                                setIcon(R.drawable.ic_octothorpe_green)
+                            when (it) {
+                                is Irc.ChannelRoom -> {
+                                    setIcon(when (it.prefix) {
+                                        "##" -> R.drawable.ic_double_octothorpe_green
+                                        "#" -> R.drawable.ic_octothorpe_green
+                                        else -> R.drawable.ic_people_green
+                                    })
+                                    title = it.postPrefix
+                                }
+                                is Irc.QueryRoom -> {
+                                    setIcon(R.drawable.ic_person_green)
+                                }
+                                is Irc.ServerRoom -> {
+                                    setIcon(R.drawable.ic_router_green)
+                                }
                             }
                             itemMap[itemId] = it
-                        } }
-                        val queryMenu = addSubMenu("Queries")
-                        it.directRooms.forEach { queryMenu.add(0, ++menuIdx, menuIdx, it.name).apply {
-                            isCheckable = true
-                            setIcon(R.drawable.ic_person_green)
-                            itemMap[itemId] = it
-                        } }
-                        it.backgroundRoom?.let { add(0, ++menuIdx, menuIdx, "server").apply {
-                            isCheckable = true
-                            itemMap[itemId] = it
-                        } }
+                        }
                     }
                     menuIds = ImmutableMap.copyOf(itemMap)
 
@@ -151,42 +156,11 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         nav_view.setNavigationItemSelectedListener(this)
     }
 
-    private fun sendIrcPacket(command: String, vararg params: String): Maybe<NetEntry> {
-        return Maybe
-                .just(treeConnection.currentProfile)
-                .flatMap { profile ->
-                    remoteTreeFor(profile.domainName!!)
-                            .invokeRx("/sessions/${profile.sessionId}/mnt/runtime/apps/irc/namespace/state/networks/${"freenode"}/wire/send/invoke",
-                                    FolderLiteral("",
-                                            StringLiteral("command", command),
-                                            FolderLiteral("params", *params.mapIndexed({ index, s ->
-                                                StringLiteral((index + 1).toString(), s)
-                                            }).toTypedArray())))
-                            .filter { evt -> evt.type == "String" }
-                }
-    }
-
-    private fun slashCommand(message: String, currentRoom: String): Maybe<NetEntry> {
+    private fun slashCommand(message: String, room: ChatRoom): Maybe<NetEntry> {
         val parts = message.drop(1).split(' ')
         val command = parts[0].toLowerCase()
         val params = parts.drop(1)
-
-        return when (command) {
-            "msg" -> sendIrcPacket(
-                    "PRIVMSG", params[0],
-                    params.drop(1).joinToString(" "))
-            "me" -> sendIrcPacket(
-                    "CTCP", currentRoom,
-                    "ACTION", params.joinToString(" "))
-            "slap" -> sendIrcPacket(
-                    "CTCP", currentRoom,
-                    "ACTION", "slaps ${params.joinToString(" ")} around a bit with a large trout")
-            "ctcp" -> sendIrcPacket(
-                    "CTCP", params[0],
-                    params[1], params.drop(2).joinToString(" "))
-            else -> Maybe.error(
-                    IllegalArgumentException("Invalid slash command /$command"))
-        }
+        return room.slashCommand(command, params)
     }
 
     override fun onDestroy() {
@@ -226,7 +200,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     //var currentMenuItem: MenuItem? = null
-    private var currentRoom: ListRoomsTask.RoomEntry? = null
+    private var currentRoom: ChatRoom? = null
     private var currentActivityFrag: ActivityFragment? = null
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
@@ -240,9 +214,9 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
         currentRoom = menuIds[item.itemId]
         currentRoom?.let {
-            currentActivityFrag = ActivityFragment.newInstance(treeConnection.currentProfile?.domainName!!, it.path)
+            currentActivityFrag = ActivityFragment.newInstance(treeConnection.currentProfile?.domainName!!, it.logPath)
             fragmentTransaction.add(R.id.chat_history_frame, currentActivityFrag)
-            title = "${it.name} on Freenode"
+            title = "${it.id} on ${it.community.id}"
         }
 
         fragmentTransaction.commit()
@@ -250,6 +224,6 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     override fun onListFragmentInteraction(entry: ActivityEntry) {
-        //TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
     }
 }
