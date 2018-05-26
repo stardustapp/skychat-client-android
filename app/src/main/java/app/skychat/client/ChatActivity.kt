@@ -68,11 +68,11 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 Snackbar.LENGTH_LONG).show()
                     }
                 }, { err ->
-                    if (err !is IllegalArgumentException) {
-                        Bugsnag.notify(err)
+                    if (err is IllegalArgumentException) {
                         Snackbar.make(view, err.localizedMessage ?: "IllegalArgumentException",
                                 Snackbar.LENGTH_SHORT).show()
                     } else {
+                        Bugsnag.notify(err)
                         Snackbar.make(view, "Crashed sending message: ${err.message}",
                                 Snackbar.LENGTH_LONG).show()
                     }
