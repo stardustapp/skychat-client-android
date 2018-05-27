@@ -34,10 +34,10 @@
 
         <EditText
             android:id="@+id/message_input"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Write a message"
+            android:hint="@string/write_a_message"
             android:inputType="textShortMessage"
             android:padding="10dp"
             android:paddingEnd="20dp"
@@ -46,12 +46,13 @@
             android:textColor="@android:color/white"
             android:textColorHint="@android:color/darker_gray" />
 
-        <Button
+        <ImageButton
             android:id="@+id/send_message_btn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/ic_send_green_24dp" />
+            android:backgroundTint="#7e305030"
+            android:contentDescription="@string/send_message"
+            android:src="@drawable/ic_send_green_24dp" />
     </LinearLayout>
 
 </LinearLayout>

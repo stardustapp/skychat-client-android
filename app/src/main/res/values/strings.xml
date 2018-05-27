@@ -30,4 +30,6 @@
     <string name="action_manage_accounts">Manage accounts</string>
     <string name="preference_state_file_key">app.skychat.client.STATE</string>
     <string name="preference_current_profile">currentProfile</string>
+    <string name="send_message">Send message</string>
+    <string name="write_a_message">Write a message</string>
 </resources>
