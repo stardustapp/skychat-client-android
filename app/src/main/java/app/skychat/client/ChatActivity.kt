@@ -101,14 +101,19 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                             ProfilesActivity::class.java))
                     finish()
                     it.onComplete()
+                }).subscribe({}, { error ->
+                    Bugsnag.notify(error)
+                    Toast.makeText(this, "Failed to resume session. ${error.message}",
+                            Toast.LENGTH_LONG).show()
                 })
 
         // Fetch community list (just IRC networks for now)
-        val communitiesMaybe = profileMaybe.flatMap {
-            Maybe
-                    .fromCallable({ Irc.getAllNetworks(it) })
-                    .subscribeOn(Schedulers.io())
-        }.cache()
+        val communitiesMaybe = profileMaybe
+                .onErrorComplete()
+                .flatMap { Maybe
+                        .fromCallable({ Irc.getAllNetworks(it) })
+                        .subscribeOn(Schedulers.io())
+                }.cache()
 
         // Seed UI with community list
         communitiesMaybe

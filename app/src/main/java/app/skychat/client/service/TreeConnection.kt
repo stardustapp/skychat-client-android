@@ -81,5 +81,6 @@ class TreeConnection(
                     true
                 }
                 .subscribeOn(Schedulers.io())
+                .cache()
     }
 }
