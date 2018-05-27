@@ -32,10 +32,6 @@ import kotlinx.android.synthetic.main.nav_header_chat.*
 import java.util.*
 
 class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener, ActivityFragment.OnListFragmentInteractionListener {
-    companion object {
-        const val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
-    }
-
     private lateinit var treeConnection: TreeConnection
     private lateinit var profileMaybe: Maybe<Profile>
 
@@ -184,28 +180,50 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.chat, menu)
-        return true
+
+    companion object {
+        private const val selectProfileRequestCode = 1
+        const val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
     }
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.chat_options, menu)
+        return true
+    }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
             R.id.action_add_profile -> {
                 startActivity(Intent(this, LoginActivity::class.java))
                 true
             }
             R.id.action_manage_profiles -> {
-                startActivity(Intent(this, ProfilesActivity::class.java))
+                startActivityForResult(Intent(this, ProfilesActivity::class.java).apply {
+                    action = Intent.ACTION_PICK
+                }, selectProfileRequestCode)
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
     }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+
+            selectProfileRequestCode -> {
+                if (resultCode == RESULT_OK) {
+                    val profileId = data?.getStringExtra(ProfilesActivity.EXTRA_SELECT_REPLY).orEmpty()
+                    startActivity(Intent(this, ChatActivity::class.java).apply {
+                        putExtra(EXTRA_PROFILE, profileId)
+                    })
+                    finish()
+                }
+            }
+
+            else ->
+                Bugsnag.notify(Exception("ChatActivity onActivityResult() got unknown resultCode"))
+        }
+    }
+
 
     //var currentMenuItem: MenuItem? = null
     private var currentRoom: ChatRoom? = null
@@ -235,8 +253,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     }
 
-    fun renderRoomMenu() {
-
+    private fun renderRoomMenu() {
         val navMenu: NavigationView = findViewById(R.id.nav_view)
         val itemMap = HashMap<Int, ChatRoom>()
         navMenu.menu.clear()
