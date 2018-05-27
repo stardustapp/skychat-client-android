@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import app.skychat.client.chat.ChatCommunity
 import app.skychat.client.chat.ChatRoom
@@ -28,7 +29,6 @@ import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_chat.*
 import kotlinx.android.synthetic.main.app_bar_chat.*
 import kotlinx.android.synthetic.main.content_chat.*
-import kotlinx.android.synthetic.main.nav_header_chat.*
 import java.util.*
 
 class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener, ActivityFragment.OnListFragmentInteractionListener {
@@ -91,14 +91,25 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         // Pass the profile to the UI
         profileMaybe
                 .observeOn(AndroidSchedulers.mainThread())
-                // If no profile resumed, let the user create or select anew
                 .switchIfEmpty(MaybeSource {
+                    // If no profile was resumed, let the user create or select anew
                     startActivity(Intent(this,
                             ProfilesActivity::class.java))
                     finish()
                     it.onComplete()
-                }).subscribe({}, { error ->
-                    Bugsnag.notify(error)
+
+                }).subscribe({
+                    // Fill in the nav header with the profile
+                    // Get views directly because NavigationView takes extra time to mount normally
+                    val profileHeader = nav_view.getHeaderView(0)
+                    val headerRealName: TextView = profileHeader.findViewById(R.id.nav_header_real_name)
+                    val headerAddress: TextView = profileHeader.findViewById(R.id.nav_header_address)
+                    headerRealName.text = it.realName ?: "Unnamed user"
+                    headerAddress.text = it.run { "$userName@$domainName" }
+
+                }, { error ->
+                    // If the profile failed to resume, TODO: probably bump to account switcher
+                    Bugsnag.notify(error, { r -> r.error?.context = "ChatActivity Profile resume" })
                     Toast.makeText(this, "Failed to resume session. ${error.message}",
                             Toast.LENGTH_LONG).show()
                 })
@@ -115,11 +126,6 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         communitiesMaybe
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ list ->
-                    treeConnection.currentProfile?.apply {
-                        nav_header_realname.text = this.realName ?: "N/A"
-                        nav_header_address.text = this.run { "$userName@$domainName" }
-                    }
-
                     communities = list
                     renderRoomMenu()
                     drawer_layout.openDrawer(GravityCompat.START)
