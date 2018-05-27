@@ -179,9 +179,9 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     private fun slashCommand(message: String, room: ChatRoom): Maybe<NetEntry> {
         val parts = message.drop(1).split(' ')
-        val command = parts[0].toLowerCase()
-        val params = parts.drop(1)
-        return room.slashCommand(command, params)
+        return room.slashCommand(
+                parts[0].toLowerCase(),
+                parts.drop(1))
     }
 
     override fun onDestroy() {
@@ -226,6 +226,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
             selectProfileRequestCode -> {
                 if (resultCode == RESULT_OK) {
+                    // Replace ourselves with a new Activity
                     val profileId = data?.getStringExtra(ProfilesActivity.EXTRA_SELECT_REPLY).orEmpty()
                     startActivity(Intent(this, ChatActivity::class.java).apply {
                         putExtra(EXTRA_PROFILE, profileId)
