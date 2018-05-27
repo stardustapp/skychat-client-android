@@ -190,17 +190,11 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     override fun onBackPressed() {
-        if (drawer_layout.isDrawerOpen(GravityCompat.START)) {
+        if (drawer_layout.isDrawerOpen(GravityCompat.START) && currentRoom != null) {
             drawer_layout.closeDrawer(GravityCompat.START)
         } else {
             super.onBackPressed()
         }
-    }
-
-
-    companion object {
-        private const val selectProfileRequestCode = 1
-        const val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -220,6 +214,12 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             else -> super.onOptionsItemSelected(item)
         }
     }
+
+    companion object {
+        private const val selectProfileRequestCode = 1
+        const val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {

@@ -51,9 +51,10 @@
             android:id="@+id/switch_account_btn"
             android:layout_width="34dp"
             android:layout_height="34dp"
-            android:layout_gravity="center"
+            android:layout_gravity="bottom"
             android:background="?android:selectableItemBackgroundBorderless"
             android:scaleType="fitCenter"
+            android:contentDescription="@string/switch_account"
             android:src="@drawable/ic_swap_calls_white" />
 
     </LinearLayout>
