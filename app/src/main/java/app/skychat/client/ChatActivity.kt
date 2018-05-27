@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import app.skychat.client.chat.ChatCommunity
@@ -45,6 +46,16 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         setContentView(R.layout.activity_chat)
         setSupportActionBar(toolbar)
 
+        // Rig up nav's profile header functionality
+        // Get views directly because NavigationView takes extra time to mount normally
+        val profileHeader = nav_view.getHeaderView(0)
+        profileHeader.findViewById<ImageButton>(R.id.switch_account_btn).setOnClickListener {
+            startActivityForResult(Intent(this, ProfilesActivity::class.java).apply {
+                action = Intent.ACTION_PICK
+            }, selectProfileRequestCode)
+        }
+
+        // Connect to the nametree service
         treeConnection = TreeConnection(this)
                 .also { it.bind() }
 
@@ -203,9 +214,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 true
             }
             R.id.action_manage_profiles -> {
-                startActivityForResult(Intent(this, ProfilesActivity::class.java).apply {
-                    action = Intent.ACTION_PICK
-                }, selectProfileRequestCode)
+                startActivity(Intent(this, ProfilesActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)
