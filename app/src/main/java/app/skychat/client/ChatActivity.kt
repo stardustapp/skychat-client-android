@@ -122,10 +122,14 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     communities = list
                     renderRoomMenu()
                     drawer_layout.openDrawer(GravityCompat.START)
+                }, { error ->
+                    Bugsnag.notify(error)
+                    Toast.makeText(this, "Failed to load communities. ${error.message}", Toast.LENGTH_LONG).show()
                 })
 
         // Load each community's rooms
         communitiesMaybe
+                .onErrorComplete()
                 .flatMapObservable { Observable.fromIterable(it) }
                 .flatMapMaybe { community -> Maybe
                         .fromCallable({ community.getRooms() })
@@ -144,7 +148,6 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 }, { error ->
                     Bugsnag.notify(error)
                     Toast.makeText(this, "Failed to load rooms. ${error.message}", Toast.LENGTH_LONG).show()
-                    finish()
                 })
 
 
