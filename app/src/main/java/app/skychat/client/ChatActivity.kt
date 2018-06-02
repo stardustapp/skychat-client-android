@@ -52,7 +52,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         profileHeader.findViewById<ImageButton>(R.id.switch_account_btn).setOnClickListener {
             startActivityForResult(Intent(this, ProfilesActivity::class.java).apply {
                 action = Intent.ACTION_PICK
-            }, selectProfileRequestCode)
+            }, switchProfileRequestCode)
         }
 
         // Connect to the nametree service
@@ -217,6 +217,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     companion object {
         private const val selectProfileRequestCode = 1
+        private const val switchProfileRequestCode = 2
         const val EXTRA_PROFILE = "app.skylink.client.ChatActivity.PROFILE"
     }
 
@@ -226,18 +227,30 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
             selectProfileRequestCode -> {
                 if (resultCode == RESULT_OK) {
-                    // Replace ourselves with a new Activity
-                    val profileId = data?.getStringExtra(ProfilesActivity.EXTRA_SELECT_REPLY).orEmpty()
-                    startActivity(Intent(this, ChatActivity::class.java).apply {
-                        putExtra(EXTRA_PROFILE, profileId)
-                    })
+                    switchToProfile(data?.getStringExtra(ProfilesActivity.EXTRA_SELECT_REPLY).orEmpty())
+                } else {
+                    // User selected nothing and we started with nothing, so we're done
                     finish()
+                }
+            }
+
+            switchProfileRequestCode -> {
+                if (resultCode == RESULT_OK) {
+                    switchToProfile(data?.getStringExtra(ProfilesActivity.EXTRA_SELECT_REPLY).orEmpty())
                 }
             }
 
             else ->
                 Bugsnag.notify(Exception("ChatActivity onActivityResult() got unknown resultCode"))
         }
+    }
+
+    // Replace ourselves with a new Activity
+    private fun switchToProfile(profileId: String) {
+        startActivity(Intent(this, ChatActivity::class.java).apply {
+            putExtra(EXTRA_PROFILE, profileId)
+        })
+        finish()
     }
 
 
