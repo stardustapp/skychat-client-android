@@ -107,7 +107,6 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     startActivityForResult(Intent(this, ProfilesActivity::class.java).apply {
                         action = Intent.ACTION_PICK
                     }, selectProfileRequestCode)
-                    finish()
                     it.onComplete()
 
                 }).subscribe({
