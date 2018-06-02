@@ -25,11 +25,6 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.content_login.*
 
-
-
-
-
-
 /**
  * A login screen that offers login via email/password.
  */

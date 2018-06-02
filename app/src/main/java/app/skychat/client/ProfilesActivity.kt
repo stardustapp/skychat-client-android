@@ -9,12 +9,12 @@ import android.os.Bundle
 import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
+import android.view.View
 import app.skychat.client.data.Profile
 import app.skychat.client.utils.ItemEventListener
 import com.bugsnag.android.Bugsnag
 import kotlinx.android.synthetic.main.activity_profiles.*
-
+import kotlinx.android.synthetic.main.content_profiles.*
 
 class ProfilesActivity : AppCompatActivity(), ItemEventListener<Profile> {
     private lateinit var viewModel: ProfileListViewModel
@@ -35,24 +35,39 @@ class ProfilesActivity : AppCompatActivity(), ItemEventListener<Profile> {
             title = "Select Stardust Account"
         }
 
-        val recyclerView = findViewById<RecyclerView>(R.id.recyclerview)
         val adapter = ProfileListAdapter(this, this)
-        recyclerView.adapter = adapter
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerview.adapter = adapter
+        recyclerview.layoutManager = LinearLayoutManager(this)
+
+        // Either you see the FTUE _or_ you have entries in the list
+        // Both the FTUE and the list have an add button, but only one is shown at a time
+
+        ftue.visibility = View.GONE
 
         viewModel = ViewModelProviders
                 .of(this)
                 .get(ProfileListViewModel::class.java)
                 .also { it
                         .getAllProfiles()
-                        .observe(this, Observer<List<Profile>>(adapter::setProfiles))
+                        .observe(this, Observer<List<Profile>> {
+                            if (it?.isEmpty() == true) {
+                                ftue.visibility = View.VISIBLE
+                                fab.visibility = View.GONE
+                            } else {
+                                ftue.visibility = View.GONE
+                                fab.visibility = View.VISIBLE
+                            }
+                            adapter.setProfiles(it)
+                        })
                 }
 
-        fab.setOnClickListener { _ ->
+        val addAcctListener = { _: View ->
             startActivityForResult(
                     Intent(this, LoginActivity::class.java),
                     addProfileRequestCode)
         }
+        fab.setOnClickListener(addAcctListener)
+        ftueStartBtn.setOnClickListener(addAcctListener)
     }
 
     override fun onItemClick(item: Profile) {

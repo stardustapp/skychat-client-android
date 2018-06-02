@@ -33,4 +33,8 @@
     <string name="send_message">Send message</string>
     <string name="write_a_message">Write a message</string>
     <string name="switch_account">Switch account</string>
+    <string name="ftue_welcome">Welcome to Skychat!</string>
+    <string name="ftue_intro">This app connects to a Stardust account on a remote server. Once you add an account, you\'ll be presented with a modern chat experience that is backed by the server. In other words, this Android application is NOT a stand-alone chat system. It requires an existing Skychat account to be usable.</string>
+    <string name="ftue_get_started">Have an account? Great, let\'s get started 🙂</string>
+    <string name="ftue_add_account">Add existing account</string>
 </resources>
