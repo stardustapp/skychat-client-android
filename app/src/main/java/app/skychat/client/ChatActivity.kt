@@ -104,8 +104,9 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 .observeOn(AndroidSchedulers.mainThread())
                 .switchIfEmpty(MaybeSource {
                     // If no profile was resumed, let the user create or select anew
-                    startActivity(Intent(this,
-                            ProfilesActivity::class.java))
+                    startActivityForResult(Intent(this, ProfilesActivity::class.java).apply {
+                        action = Intent.ACTION_PICK
+                    }, selectProfileRequestCode)
                     finish()
                     it.onComplete()
 
