@@ -55,9 +55,9 @@ class TreeConnection(
     // Selects the most recently 'used' profile, if any
     fun resumeLastProfile(): Maybe<Profile>  {
         return Maybe
-                .just(sharedPrefs.getString(
+                .fromCallable({ sharedPrefs.getString(
                         packageContext.getString(R.string.preference_current_profile),
-                        null))
+                        null) })
                 .flatMap(profileRepo::getProfileById)
                 .filter {
                     currentProfile = it
